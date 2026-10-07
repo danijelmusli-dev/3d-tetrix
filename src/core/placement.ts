@@ -133,3 +133,49 @@ export function slideToward(
   }
   return best;
 }
+
+/**
+ * Rotation kick offsets, closest first: stay, sideways, up, diagonal, two away,
+ * two up, three away (an I turning against a wall needs three).
+ */
+const KICKS: readonly Vec3[] = [
+  [0, 0, 0],
+  [1, 0, 0],
+  [-1, 0, 0],
+  [0, 1, 0],
+  [0, -1, 0],
+  [0, 0, 1],
+  [1, 1, 0],
+  [-1, 1, 0],
+  [1, -1, 0],
+  [-1, -1, 0],
+  [2, 0, 0],
+  [-2, 0, 0],
+  [0, 2, 0],
+  [0, -2, 0],
+  [0, 0, 2],
+  [3, 0, 0],
+  [-3, 0, 0],
+  [0, 3, 0],
+  [0, -3, 0],
+];
+
+/**
+ * Where a freshly rotated piece can sit near (x, y, z): the first kick offset
+ * whose position fits, or null if none does. Like standard Tetris kicks, the
+ * offset is tested directly (no path), so a kick can pop a piece past a thin
+ * edge; `canReachWithRotations` uses the same rule, keeping controls and rules
+ * in agreement.
+ */
+export function kickPosition(
+  grid: Grid,
+  cells: readonly Vec3[],
+  x: number,
+  y: number,
+  z: number,
+): Vec3 | null {
+  for (const [dx, dy, dz] of KICKS) {
+    if (fits(grid, cells, x + dx, y + dy, z + dz)) return [x + dx, y + dy, z + dz];
+  }
+  return null;
+}

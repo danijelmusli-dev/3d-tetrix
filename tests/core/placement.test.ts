@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { Grid, type Vec3 } from '../../src/core/grid';
-import { canReach, dropZ, fallZ, fits, restingZ, slideToward } from '../../src/core/placement';
+import {
+  canReach,
+  dropZ,
+  fallZ,
+  fits,
+  kickPosition,
+  restingZ,
+  slideToward,
+} from '../../src/core/placement';
 
 const flatI: Vec3[] = [
   [0, 0, 0],
@@ -185,5 +193,41 @@ describe('slideToward', () => {
     const g = new Grid(10, 10);
     g.set(0, 3, 0, 1);
     expect(slideToward(g, flatI, [0, 3], 0, [4, 3])).toEqual([0, 3]);
+  });
+});
+
+describe('kickPosition', () => {
+  it('keeps the position when the piece already fits', () => {
+    expect(kickPosition(new Grid(10, 10), alongYI, 3, 3, 0)).toEqual([3, 3, 0]);
+  });
+
+  it('nudges sideways out of a collision, closest offset first', () => {
+    const g = new Grid(10, 10);
+    g.set(3, 4, 0, 1); // blocks x=3, so try +x first
+    expect(kickPosition(g, alongYI, 3, 3, 0)).toEqual([4, 3, 0]);
+  });
+
+  it('nudges up when every sideways spot is blocked', () => {
+    const g = new Grid(10, 10);
+    for (let x = 0; x < 10; x++) for (let y = 0; y < 10; y++) g.set(x, y, 0, 1);
+    expect(kickPosition(g, flatI, 3, 3, 0)).toEqual([3, 3, 1]);
+  });
+
+  it('takes the first offset that fits, like standard Tetris kicks', () => {
+    const g = new Grid(10, 10);
+    g.set(3, 4, 0, 1);
+    g.set(4, 4, 0, 1); // +x also blocked, so -x wins
+    expect(kickPosition(g, alongYI, 3, 3, 0)).toEqual([2, 3, 0]);
+  });
+
+  it('kicks an I turned against the board edge back by three (regression)', () => {
+    // Along-Y I at the edge x=9 under the cave roof, turned along X: needs x=6.
+    expect(kickPosition(cave(), flatI, 9, 3, 0)).toEqual([6, 3, 0]);
+  });
+
+  it('gives up when nothing nearby fits', () => {
+    const g = new Grid(4, 4);
+    g.cells.fill(1);
+    expect(kickPosition(g, flatI, 0, 0, 0)).toBeNull();
   });
 });

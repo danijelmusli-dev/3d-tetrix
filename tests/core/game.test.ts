@@ -127,15 +127,26 @@ describe('Game', () => {
       expect(game.placeAt(0, FLAT, 3, 3, 6)!.placed[0]).toEqual([3, 3, 0]);
     });
 
-    it('rejects unreachable, blocked or invalid requests', () => {
+    it('rejects blocked or invalid requests', () => {
       const game = caveGame();
-      expect(game.placeAt(0, FLAT, 4, 2, 0)).toBeNull(); // too wide for the cave mouth
       expect(game.placeAt(0, alongY, 4, 2, 1)).toBeNull(); // inside the roof
       expect(game.placeAt(0, 99, 0, 0, 0)).toBeNull();
       expect(game.placeAt(2, FLAT, 9, 9, 0)).toBeNull(); // T off the board
       expect(game.tray.pieces).toEqual(['I', 'O', 'T']);
       game.placeAt(0, alongY, 4, 2, 0);
       expect(game.placeAt(0, alongY, 6, 2, 0)).toBeNull(); // slot already used
+    });
+
+    it('accepts a spot only reachable by rotating inside the cave', () => {
+      // A flat I is too wide for the 2-wide mouth, but can enter along Y and turn.
+      expect(caveGame().placeAt(0, FLAT, 4, 2, 0)).not.toBeNull();
+    });
+
+    it('rejects a sealed pocket', () => {
+      const grid = new Grid(10, 4);
+      grid.cells.fill(1);
+      for (let x = 3; x < 7; x++) grid.set(x, 5, 0, 0);
+      expect(gameWith(['I', 'O', 'T'], grid).placeAt(0, FLAT, 3, 5, 0)).toBeNull();
     });
   });
 

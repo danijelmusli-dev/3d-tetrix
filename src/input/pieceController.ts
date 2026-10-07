@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import type { Game, PlaceResult } from '../core/game';
 import { getOrientations, type Orientation } from '../core/orientations';
 import { PIECES } from '../core/pieces';
-import { fallZ, fits, restingZ, slideToward } from '../core/placement';
+import { fallZ, fits, kickPosition, restingZ, slideToward } from '../core/placement';
 import type { BoardSpin } from '../render/boardSpin';
 import type { BoardView } from '../render/boardView';
 import type { GhostView } from '../render/ghostView';
@@ -187,18 +187,22 @@ export class PieceController {
     this.renderTray();
   }
 
-  rotate(kind: RotationKind, dir: 1 | -1): void {
-    if (!this.held) return;
+  /** Rotate the held piece; returns false if a slide-mode rotation found no room. */
+  rotate(kind: RotationKind, dir: 1 | -1): boolean {
+    if (!this.held) return false;
     const id = this.deps.game.tray.pieces[this.held.slot]!;
     const next = rotateForView(id, this.held.orientation, kind, this.deps.spin.quarter, dir);
     const { free } = this;
-    // In free move the piece is inside the stack: only rotate if it still fits.
-    if (
-      free &&
-      !fits(this.deps.game.grid, getOrientations(id)[next]!.cells, free.x, free.y, free.z)
-    )
-      return;
+    if (free) {
+      // Inside the stack: if the rotated piece collides, kick it to the nearest
+      // reachable spot that fits (sideways, up, ...), or refuse the rotation.
+      const cells = getOrientations(id)[next]!.cells;
+      const kicked = kickPosition(this.deps.game.grid, cells, free.x, free.y, free.z);
+      if (!kicked) return false;
+      [free.x, free.y, free.z] = kicked;
+    }
     this.held.orientation = next;
+    return true;
   }
 
   cancel(): void {

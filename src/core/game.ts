@@ -3,6 +3,7 @@ import { Grid, type Vec3 } from './grid';
 import { getOrientations } from './orientations';
 import { PIECES, type PieceId } from './pieces';
 import { canReach, dropZ, fallZ } from './placement';
+import { canReachWithRotations } from './reach';
 import { createRng } from './rng';
 import { Tray } from './tray';
 
@@ -86,7 +87,12 @@ export class Game {
     if (this.gameOver) return null;
     const id = this.tray.pieces[slot];
     const o = id ? getOrientations(id)[orientation] : undefined;
-    if (!id || !o || !canReach(this.grid, o.cells, x, y, z)) return null;
+    if (!id || !o) return null;
+    // Cheap check first; the rotation-aware search only runs for tricky spots.
+    const reachable =
+      canReach(this.grid, o.cells, x, y, z) ||
+      canReachWithRotations(this.grid, id, orientation, x, y, z);
+    if (!reachable) return null;
     const rest = fallZ(this.grid, o.cells, x, y, z)!;
     this.tray.take(slot);
     const trayRefilled = this.tray.refillIfEmpty();
