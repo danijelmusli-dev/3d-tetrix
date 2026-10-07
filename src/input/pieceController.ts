@@ -56,6 +56,8 @@ export class PieceController {
   private pressAt: { x: number; y: number } | null = null;
   private dragged = false;
   private free: FreePosition | null = null;
+  /** True while a placement animation plays: no ghost, no placing. */
+  locked = false;
   private readonly raycaster = new THREE.Raycaster();
 
   constructor(private readonly deps: PieceControllerDeps) {
@@ -162,6 +164,10 @@ export class PieceController {
 
   /** Per-frame: keep the ghost on the aimed spot (the board may be spinning). */
   update(): void {
+    if (this.locked) {
+      this.deps.ghost.hide();
+      return;
+    }
     if (this.free) {
       this.updateFree(this.free);
       return;
@@ -235,7 +241,7 @@ export class PieceController {
 
   private tryPlace(): boolean {
     const { held, free } = this;
-    if (!held) return false;
+    if (!held || this.locked) return false;
     let result: PlaceResult | null;
     if (free) {
       result = this.deps.game.placeAt(held.slot, held.orientation, free.x, free.y, free.z);
@@ -280,6 +286,12 @@ export class PieceController {
     if (!anchor) return null;
     const [x, y] = anchor;
     return { x, y, z: game.landingZ(held.slot, held.orientation, x, y) };
+  }
+
+  /** After a restart: drop whatever is held and show the new tray. */
+  reset(): void {
+    this.locked = false;
+    this.cancel();
   }
 
   private renderTray(): void {

@@ -19,6 +19,21 @@ function dominantAxis(n: THREE.Vector3): THREE.Vector3 {
   return new THREE.Vector3(0, 0, Math.sign(n.z));
 }
 
+/** A cube to draw: grid position (may be fractional while animating), size and flash. */
+export interface DisplayCube {
+  x: number;
+  y: number;
+  z: number;
+  colorId: number;
+  /** 1 = full size. */
+  scale?: number;
+  /** 0..1 blend toward white. */
+  flash?: number;
+}
+
+const IDENTITY_QUATERNION = new THREE.Quaternion();
+const FLASH_COLOR = new THREE.Color(0xffffff);
+
 export function pieceColor(colorId: number): THREE.Color {
   return new THREE.Color(PIECE_COLORS[colorId - 1] ?? 0xffffff);
 }
@@ -50,12 +65,25 @@ export class BoardView {
 
   /** Redraw every placed cube from the grid. */
   sync(grid: Grid): void {
+    this.draw(Array.from(grid.filled(), ({ pos: [x, y, z], colorId }) => ({ x, y, z, colorId })));
+  }
+
+  /** Draw an explicit list of cubes (animation frames use fractional positions). */
+  draw(cubes: Iterable<DisplayCube>): void {
     const matrix = new THREE.Matrix4();
+    const scale = new THREE.Vector3();
+    const color = new THREE.Color();
     let i = 0;
-    for (const { pos, colorId } of grid.filled()) {
-      matrix.setPosition(this.cellCenter(...pos));
+    for (const cube of cubes) {
+      const s = cube.scale ?? 1;
+      matrix.compose(
+        this.cellCenter(cube.x, cube.y, cube.z),
+        IDENTITY_QUATERNION,
+        scale.set(s, s, s),
+      );
       this.cubes.setMatrixAt(i, matrix);
-      this.cubes.setColorAt(i, pieceColor(colorId));
+      color.copy(pieceColor(cube.colorId)).lerp(FLASH_COLOR, cube.flash ?? 0);
+      this.cubes.setColorAt(i, color);
       i++;
     }
     this.cubes.count = i;

@@ -37,3 +37,14 @@ export const CAMERA = {
   zoomMs: 600,
   spinMs: 250,
 } as const;
+
+/** Placement / clear animation timings (ms). */
+export const ANIM = {
+  dropMs: 140,
+  /** Height (layers) the placed piece drops in from. */
+  dropHeight: 0.8,
+  flashMs: 150,
+  shrinkMs: 180,
+  fallMs: 220,
+  scoreCountMs: 400,
+} as const;

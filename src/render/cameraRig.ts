@@ -11,7 +11,8 @@ export class CameraRig {
   private visibleLayers: number;
   private goal: number;
   private tween?: TweenHandle;
-  /** NDC height (0..2) reserved at the bottom of the viewport for UI. */
+  /** NDC heights (0..2) reserved at the top / bottom of the viewport for UI. */
+  private topInset = 0;
   private bottomInset = 0;
   private readonly dir: THREE.Vector3;
 
@@ -58,13 +59,14 @@ export class CameraRig {
   }
 
   /**
-   * Re-fit for the current viewport, keeping `bottomPx` at the bottom free for
-   * UI (the tray). The projection center shifts up so the board is centered
-   * in the remaining area.
+   * Re-fit for the current viewport, keeping `topPx` / `bottomPx` free for UI
+   * (score, tray). The projection center shifts so the board is centered in
+   * the remaining area.
    */
-  layout(width: number, height: number, bottomPx: number): void {
+  layout(width: number, height: number, topPx: number, bottomPx: number): void {
+    this.topInset = (2 * topPx) / height;
     this.bottomInset = (2 * bottomPx) / height;
-    this.camera.setViewOffset(width, height, 0, bottomPx / 2, width, height);
+    this.camera.setViewOffset(width, height, 0, (bottomPx - topPx) / 2, width, height);
     this.apply();
   }
 
@@ -91,7 +93,9 @@ export class CameraRig {
     const fits = (): boolean =>
       corners.every((c) => {
         const p = c.clone().project(this.camera);
-        return Math.abs(p.x) <= limit && p.y <= limit && p.y >= -limit + this.bottomInset;
+        return (
+          Math.abs(p.x) <= limit && p.y <= limit - this.topInset && p.y >= -limit + this.bottomInset
+        );
       });
 
     let lo = 1;

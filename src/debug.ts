@@ -7,12 +7,16 @@
  *           ...&free&slide=700,420&lift=1               (Shift free move, then slide/raise)
  *           aimcell=x,y,z / slidecell=x,y,z  aim at a grid cell instead of pixels
  *           #cave   roof over x>=2 at z=1 (diagonal holes), open cave mouth at x=0..1
+ *           rowx=y,z[,a-b];...  fill an X-line at (y, z) leaving holes x=a..b (rowy likewise)
+ *           cells=x,y,z;...     single cubes    #endgame  one I move left, then no moves
+ *           slow=5              play animations 5x slower
  */
 import type { Game, PlaceResult } from './core/game';
 import { getOrientations } from './core/orientations';
 import { PIECE_IDS, type PieceId } from './core/pieces';
 import type { PieceController } from './input/pieceController';
 import type { RotationKind } from './input/placementMath';
+import type { Animator } from './render/animator';
 import type { BoardSpin } from './render/boardSpin';
 import type { CameraRig } from './render/cameraRig';
 
@@ -21,6 +25,7 @@ export interface DebugDeps {
   spin: BoardSpin;
   controller: PieceController;
   rig: CameraRig;
+  animator: Animator;
   /** Screen (client px) position of grid cell center (x, y, z). */
   cellToScreen: (x: number, y: number, z: number) => [number, number];
   /** Redraw the board and refit the camera after grid changes. */
@@ -61,7 +66,10 @@ export function installDebug({
   rig,
   refresh,
   cellToScreen,
+  animator,
 }: DebugDeps): void {
+  const slow = Number(new URLSearchParams(location.hash.slice(1)).get('slow'));
+  if (slow > 0) animator.timeScale = 1 / slow;
   let last = { clientX: 0, clientY: 0 };
   const pointer = (type: string, x: number, y: number): void => {
     last = { clientX: x, clientY: y };
@@ -140,6 +148,7 @@ function runHashScript(api: DebugApi): void {
       for (let y = 0; y < grid.size; y++) if (y !== x - 2) grid.set(x, y, 1, 4);
     api.refresh();
   }
+  buildScenario(api, params);
   /** `x,y` pixels, or a grid cell via the `<name>cell=x,y,z` param. */
   const point = (name: string): [number, number] | undefined => {
     const cell = params.get(`${name}cell`);
@@ -160,25 +169,9 @@ function runHashScript(api: DebugApi): void {
   const turns = Number(params.get('spin') ?? 0);
   for (let i = 0; i < Math.abs(turns); i++) api.spin(turns > 0 ? 1 : -1);
 
-  if (params.has('hold')) {
-    const [x, y] = point('aim') ?? [0, 0];
-    api.hold(Number(params.get('hold')), x + 20, y + 20);
-    api.aim(x, y); // moving past the drag threshold makes it a drag
-    for (const kind of (params.get('rot') ?? '').split(',').filter(Boolean))
-      api.rotate(kind as RotationKind);
-    if (params.has('free')) {
-      // Lock after the first frame has a target, then slide the pointer.
-      setTimeout(() => {
-        api.free(true);
-        const lift = Number(params.get('lift') ?? 0);
-        for (let i = 0; i < Math.abs(lift); i++) api.raise(lift > 0 ? 1 : -1);
-        const slide = point('slide');
-        if (slide) api.aim(...slide);
-      }, 400);
-    }
-    // Let the board spin / slide settle before releasing.
-    if (params.has('drop')) setTimeout(() => api.drop(), 1200);
-  }
+  // Wait for the camera to settle on the scenario's stack height before aiming.
+  const settleMs = 700 * (Number(params.get('slow')) || 1);
+  if (params.has('hold')) setTimeout(() => scriptedHold(api, params, point), settleMs);
 
   // #report: dump state into the DOM for headless `--dump-dom` checks.
   if (params.has('report'))
@@ -187,7 +180,31 @@ function runHashScript(api: DebugApi): void {
       pre.id = 'report';
       pre.textContent = JSON.stringify(api.report());
       document.body.appendChild(pre);
-    }, 1500);
+    }, 2500);
+}
+
+function scriptedHold(
+  api: DebugApi,
+  params: URLSearchParams,
+  point: (name: string) => [number, number] | undefined,
+): void {
+  const [x, y] = point('aim') ?? [0, 0];
+  api.hold(Number(params.get('hold')), x + 20, y + 20);
+  api.aim(x, y); // moving past the drag threshold makes it a drag
+  for (const kind of (params.get('rot') ?? '').split(',').filter(Boolean))
+    api.rotate(kind as RotationKind);
+  if (params.has('free')) {
+    // Lock after the first frame has a target, then slide the pointer.
+    setTimeout(() => {
+      api.free(true);
+      const lift = Number(params.get('lift') ?? 0);
+      for (let i = 0; i < Math.abs(lift); i++) api.raise(lift > 0 ? 1 : -1);
+      const slide = point('slide');
+      if (slide) api.aim(...slide);
+    }, 400);
+  }
+  // Let the board spin / slide settle before releasing.
+  if (params.has('drop')) setTimeout(() => api.drop(), 1200);
 }
 
 function showFps(): void {
@@ -207,4 +224,40 @@ function showFps(): void {
     requestAnimationFrame(tick);
   };
   requestAnimationFrame(tick);
+}
+
+/** Grid setup params for reproducible clear / game-over scenarios. */
+function buildScenario(api: DebugApi, params: URLSearchParams): void {
+  const { grid } = api.game;
+  const holesOf = (range?: string): [number, number] => {
+    const [a = -1, b = a] = (range ?? '').split('-').map(Number);
+    return [a, b];
+  };
+  for (const spec of (params.get('rowx') ?? '').split(';').filter(Boolean)) {
+    const [y = 0, z = 0, range] = spec.split(',');
+    const [a, b] = holesOf(range);
+    for (let x = 0; x < grid.size; x++) if (x < a || x > b) grid.set(x, +y, +z, 2);
+  }
+  for (const spec of (params.get('rowy') ?? '').split(';').filter(Boolean)) {
+    const [x = 0, z = 0, range] = spec.split(',');
+    const [a, b] = holesOf(range);
+    for (let y = 0; y < grid.size; y++) if (y < a || y > b) grid.set(+x, y, +z, 6);
+  }
+  for (const spec of (params.get('cells') ?? '').split(';').filter(Boolean)) {
+    const [x = 0, y = 0, z = 0] = spec.split(',').map(Number);
+    grid.set(x, y, z, 5);
+  }
+  if (params.has('endgame')) {
+    // Like the core game-over test: lower layers with one hole per line, top
+    // layer of isolated pits plus a single 4-wide slot at the front, (5..8, 9).
+    const top = grid.height - 1;
+    for (let z = 0; z < top; z++)
+      for (let x = 0; x < grid.size; x++)
+        for (let y = 0; y < grid.size; y++)
+          if (y !== (x + 1) % grid.size) grid.set(x, y, z, ((x + y + z) % 7) + 1);
+    for (let x = 0; x < grid.size; x++)
+      for (let y = 0; y < grid.size; y++)
+        if (x !== y && !(y === 9 && x >= 5 && x <= 8)) grid.set(x, y, top, ((x + y) % 7) + 1);
+  }
+  api.refresh();
 }

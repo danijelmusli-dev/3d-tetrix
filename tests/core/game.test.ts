@@ -65,6 +65,29 @@ describe('Game', () => {
     expect(countFilled(game.grid)).toBe(0);
   });
 
+  it('includes a snapshot of the grid from before the placement', () => {
+    const grid = new Grid(10, 10);
+    fillRowX(grid, 0, 0, [0, 1, 2, 3]);
+    const game = gameWith(['I', 'O', 'T'], grid);
+    const snapshot = grid.clone();
+    const res = game.place(0, FLAT, 0, 0)!;
+    expect(res.before.cells).toEqual(snapshot.cells);
+    expect(res.before).not.toBe(game.grid);
+  });
+
+  it('reset starts a fresh game', () => {
+    const game = gameWith(['I', 'O', 'T']);
+    game.place(0, FLAT, 0, 0);
+    game.reset(5);
+    expect(countFilled(game.grid)).toBe(0);
+    expect(game.score).toBe(0);
+    expect(game.gameOver).toBe(false);
+    expect(game.tray.pieces.every((p) => p !== null)).toBe(true);
+    const again = new Game({ seed: 1 });
+    again.reset(5);
+    expect(again.tray.pieces).toEqual(game.tray.pieces);
+  });
+
   it('refills the tray after the third placement', () => {
     const game = gameWith(['O', 'O', 'O']);
     expect(game.place(0, FLAT, 0, 0)!.trayRefilled).toBe(false);

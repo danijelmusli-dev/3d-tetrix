@@ -1,6 +1,6 @@
 import './style.css';
 import { BOARD_HEIGHT, BOARD_SIZE } from './config';
-import { Game } from './core/game';
+import { Game, POINTS_PER_CLEARED_CELL, POINTS_PER_PLACED_CELL } from './core/game';
 import { TRAY_SLOTS } from './core/tray';
 import { bindKeys } from './input/keyboard';
 import { PieceController } from './input/pieceController';
@@ -9,9 +9,11 @@ import { BoardSpin } from './render/boardSpin';
 import { BoardView } from './render/boardView';
 import { CameraRig } from './render/cameraRig';
 import { GhostView } from './render/ghostView';
+import { animatePlacement } from './render/placeAnimation';
 import { createScene } from './render/scene';
 import { createPieceThumbnails } from './render/thumbnails';
 import { createSpinButtons } from './ui/controls';
+import { Hud } from './ui/hud';
 import { TrayView } from './ui/trayView';
 
 const container = document.getElementById('app');
@@ -48,19 +50,28 @@ const controller = new PieceController({
   tray,
   camera,
   canvas: renderer.domElement,
-  onPlaced: (result) => {
+  onPlaced: async (result) => {
+    controller.locked = true;
+    // Count the score up alongside the animation: placement first, then each clear step.
+    let shown = game.score - result.scoreDelta + result.placed.length * POINTS_PER_PLACED_CELL;
+    hud.setScore(shown);
+    await animatePlacement(result, board, animator, {
+      onStep: (i, step) => {
+        const points = step.cleared.length * POINTS_PER_CLEARED_CELL * (i + 1);
+        shown += points;
+        hud.setScore(shown);
+        hud.popup(
+          `+${points}`,
+          i > 0 ? `Combo ×${i + 1}` : step.lines > 1 ? `${step.lines} lines` : 'Line clear',
+        );
+      },
+    });
     refresh();
-    if (result.gameOver) showGameOver();
+    hud.setScore(game.score);
+    controller.locked = false;
+    if (result.gameOver) hud.showGameOver(game.score);
   },
 });
-
-/** Fit the camera into the space above the tray. */
-function layout(): void {
-  const trayTop = tray.el.getBoundingClientRect().top;
-  rig.layout(container!.clientWidth, container!.clientHeight, container!.clientHeight - trayTop);
-}
-window.addEventListener('resize', layout);
-layout();
 
 bindKeys({
   q: () => spin.turn(1),
@@ -79,12 +90,24 @@ createSpinButtons(
   () => spin.turn(-1),
 );
 
-/** Placeholder until the Phase 5 HUD. */
-function showGameOver(): void {
-  const el = document.createElement('div');
-  el.className = 'game-over';
-  el.textContent = `No moves left — score ${game.score}. Reload to play again.`;
-  document.body.appendChild(el);
+const hud = new Hud(animator, restart);
+
+/** Fit the camera into the space between the score readout and the tray. */
+function layout(): void {
+  const { clientWidth: w, clientHeight: h } = container!;
+  const top = hud.scoreEl.getBoundingClientRect().bottom;
+  const bottom = h - tray.el.getBoundingClientRect().top;
+  rig.layout(w, h, top, bottom);
+}
+window.addEventListener('resize', layout);
+layout();
+
+function restart(): void {
+  game.reset();
+  controller.reset();
+  refresh();
+  hud.setScore(0, false);
+  hud.hideGameOver();
 }
 
 if (import.meta.env.DEV) {
@@ -94,9 +117,11 @@ if (import.meta.env.DEV) {
       spin,
       controller,
       rig,
+      animator,
       refresh,
       cellToScreen: (x, y, z) => {
-        const v = board.group.localToWorld(board.cellCenter(x, y, z)).project(camera);
+        // Floor of the cell, so a ray through it lands in that cell.
+        const v = board.group.localToWorld(board.cellCenter(x, y, z - 0.5)).project(camera);
         const rect = renderer.domElement.getBoundingClientRect();
         return [rect.left + ((v.x + 1) / 2) * rect.width, rect.top + ((1 - v.y) / 2) * rect.height];
       },

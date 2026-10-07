@@ -1,9 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { Animator, easeInOutCubic, linear } from '../../src/render/animator';
+import {
+  Animator,
+  easeInOutCubic,
+  easeInQuad,
+  easeOutCubic,
+  linear,
+} from '../../src/render/animator';
 
 describe('easing', () => {
   it('maps 0 → 0 and 1 → 1', () => {
-    for (const ease of [linear, easeInOutCubic]) {
+    for (const ease of [linear, easeInOutCubic, easeOutCubic, easeInQuad]) {
       expect(ease(0)).toBe(0);
       expect(ease(1)).toBe(1);
     }
@@ -57,6 +63,15 @@ describe('Animator', () => {
     anim.tween({ from: 4, to: 5, duration: 100, onUpdate: (v) => seen.push(v) }, 1000);
     anim.update(900);
     expect(seen).toEqual([4]);
+  });
+
+  it('timeScale slows playback', () => {
+    const anim = new Animator();
+    anim.timeScale = 0.5;
+    const seen: number[] = [];
+    anim.tween({ from: 0, to: 10, duration: 100, ease: linear, onUpdate: (v) => seen.push(v) }, 0);
+    anim.update(100);
+    expect(seen).toEqual([5]);
   });
 
   it('zero duration jumps straight to the end', () => {

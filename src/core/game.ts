@@ -21,6 +21,8 @@ export interface PlaceResult {
   pieceId: PieceId;
   colorId: number;
   placed: Vec3[];
+  /** Grid as it was before the piece landed (for replaying the placement). */
+  before: Grid;
   /** Ordered clear → drop steps; step i scores at combo level i + 1. */
   steps: ClearStep[];
   scoreDelta: number;
@@ -38,7 +40,7 @@ export function scoreFor(placedCells: number, steps: readonly ClearStep[]): numb
 
 export class Game {
   readonly grid: Grid;
-  readonly tray: Tray;
+  tray: Tray;
   score = 0;
   gameOver = false;
 
@@ -46,6 +48,14 @@ export class Game {
     const { size = 10, height = 10, seed = Date.now() } = options;
     this.grid = options.grid ?? new Grid(size, height);
     this.tray = options.tray ?? new Tray(createRng(seed));
+    this.gameOver = !this.hasAnyMove();
+  }
+
+  /** Start over: empty board, zero score, fresh tray. */
+  reset(seed = Date.now()): void {
+    this.grid.cells.fill(0);
+    this.tray = new Tray(createRng(seed));
+    this.score = 0;
     this.gameOver = !this.hasAnyMove();
   }
 
@@ -98,6 +108,7 @@ export class Game {
     z: number,
     trayRefilled: boolean,
   ): PlaceResult {
+    const before = this.grid.clone();
     const { colorId } = PIECES[pieceId];
     const placed = getOrientations(pieceId)[orientation]!.cells.map(([dx, dy, dz]): Vec3 => [
       x + dx,
@@ -111,7 +122,16 @@ export class Game {
     this.score += scoreDelta;
     this.gameOver = !this.hasAnyMove();
 
-    return { pieceId, colorId, placed, steps, scoreDelta, trayRefilled, gameOver: this.gameOver };
+    return {
+      pieceId,
+      colorId,
+      placed,
+      before,
+      steps,
+      scoreDelta,
+      trayRefilled,
+      gameOver: this.gameOver,
+    };
   }
 
   /** True if any tray piece fits anywhere in any orientation. */

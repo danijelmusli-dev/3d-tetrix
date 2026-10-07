@@ -1,6 +1,8 @@
 export type Easing = (t: number) => number;
 
 export const linear: Easing = (t) => t;
+export const easeOutCubic: Easing = (t) => 1 - Math.pow(1 - t, 3);
+export const easeInQuad: Easing = (t) => t * t;
 export const easeInOutCubic: Easing = (t) =>
   t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
 
@@ -28,6 +30,8 @@ interface Active extends Required<TweenOptions> {
 /** Minimal tween runner driven by the render loop's `update(now)`. */
 export class Animator {
   private readonly active = new Set<Active>();
+  /** Playback speed multiplier (debug slow motion). */
+  timeScale = 1;
 
   get busy(): boolean {
     return this.active.size > 0;
@@ -53,7 +57,7 @@ export class Animator {
   update(now: number): void {
     for (const t of this.active) {
       t.start ??= now;
-      const elapsed = Math.max(now - t.start, 0);
+      const elapsed = Math.max(now - t.start, 0) * this.timeScale;
       const progress = t.duration > 0 ? Math.min(elapsed / t.duration, 1) : 1;
       t.onUpdate(t.from + (t.to - t.from) * t.ease(progress));
       if (progress === 1) {
