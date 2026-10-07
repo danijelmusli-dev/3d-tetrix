@@ -55,21 +55,27 @@ const controller = new PieceController({
     // Count the score up alongside the animation: placement first, then each clear step.
     let shown = game.score - result.scoreDelta + result.placed.length * POINTS_PER_PLACED_CELL;
     hud.setScore(shown);
-    await animatePlacement(result, board, animator, {
-      onStep: (i, step) => {
-        const points = step.cleared.length * POINTS_PER_CLEARED_CELL * (i + 1);
-        shown += points;
-        hud.setScore(shown);
-        hud.popup(
-          `+${points}`,
-          i > 0 ? `Combo ×${i + 1}` : step.lines > 1 ? `${step.lines} lines` : 'Line clear',
-        );
-      },
-    });
-    refresh();
-    hud.setScore(game.score);
-    controller.locked = false;
-    if (result.gameOver) hud.showGameOver(game.score);
+    try {
+      await animatePlacement(result, board, animator, {
+        onStep: (i, step) => {
+          const points = step.cleared.length * POINTS_PER_CLEARED_CELL * (i + 1);
+          shown += points;
+          hud.setScore(shown);
+          hud.popup(
+            `+${points}`,
+            i > 0 ? `Combo ×${i + 1}` : step.lines > 1 ? `${step.lines} lines` : 'Line clear',
+          );
+        },
+      });
+    } catch (err) {
+      // The animation is cosmetic: never let it leave the game locked or the board stale.
+      console.error('Placement animation failed', err);
+    } finally {
+      refresh();
+      hud.setScore(game.score);
+      controller.locked = false;
+      if (result.gameOver) hud.showGameOver(game.score);
+    }
   },
 });
 
@@ -118,6 +124,7 @@ if (import.meta.env.DEV) {
       controller,
       rig,
       animator,
+      board,
       refresh,
       cellToScreen: (x, y, z) => {
         // Floor of the cell, so a ray through it lands in that cell.
@@ -130,7 +137,13 @@ if (import.meta.env.DEV) {
 }
 
 renderer.setAnimationLoop((now) => {
-  animator.update(now);
-  controller.update();
+  // three.js only schedules the next frame after this callback returns, so an
+  // exception here would freeze the screen for good. Log it and keep drawing.
+  try {
+    animator.update(now);
+    controller.update();
+  } catch (err) {
+    console.error('Frame update failed', err);
+  }
   renderer.render(scene, camera);
 });

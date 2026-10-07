@@ -57,6 +57,11 @@ export class BoardView {
     this.group.add(this.createSlab(), this.createCellLines(), this.cubes);
   }
 
+  /** Number of cubes currently drawn (debug checks). */
+  get drawnCount(): number {
+    return this.cubes.count;
+  }
+
   /** Local-space center of grid cell (x, y, z). */
   cellCenter(x: number, y: number, z: number): THREE.Vector3 {
     const half = this.size / 2;

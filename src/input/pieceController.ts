@@ -288,6 +288,16 @@ export class PieceController {
     return { x, y, z: game.landingZ(held.slot, held.orientation, x, y) };
   }
 
+  /** Debug: place a tray piece directly, through the same onPlaced path as the mouse. */
+  debugPlace(slot: number, orientation: number, x: number, y: number): PlaceResult | null {
+    if (this.locked) return null;
+    const result = this.deps.game.place(slot, orientation, x, y);
+    if (!result) return null;
+    this.cancel();
+    this.deps.onPlaced(result);
+    return result;
+  }
+
   /** After a restart: drop whatever is held and show the new tray. */
   reset(): void {
     this.locked = false;

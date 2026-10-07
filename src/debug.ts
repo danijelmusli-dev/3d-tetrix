@@ -18,6 +18,7 @@ import type { PieceController } from './input/pieceController';
 import type { RotationKind } from './input/placementMath';
 import type { Animator } from './render/animator';
 import type { BoardSpin } from './render/boardSpin';
+import type { BoardView } from './render/boardView';
 import type { CameraRig } from './render/cameraRig';
 
 export interface DebugDeps {
@@ -26,6 +27,7 @@ export interface DebugDeps {
   controller: PieceController;
   rig: CameraRig;
   animator: Animator;
+  board: BoardView;
   /** Screen (client px) position of grid cell center (x, y, z). */
   cellToScreen: (x: number, y: number, z: number) => [number, number];
   /** Redraw the board and refit the camera after grid changes. */
@@ -46,6 +48,8 @@ export interface DebugApi {
   /** Release the pointer at its last position (places if valid). */
   drop(): void;
   report(): Record<string, unknown>;
+  /** Place a tray piece through the controller's real onPlaced (animation) path. */
+  play(slot: number, orientation: number, x: number, y: number): PlaceResult | null;
   /** Simulate holding / releasing Shift (free move). */
   free(on: boolean): void;
   raise(dz: 1 | -1): void;
@@ -67,6 +71,7 @@ export function installDebug({
   refresh,
   cellToScreen,
   animator,
+  board,
 }: DebugDeps): void {
   const slow = Number(new URLSearchParams(location.hash.slice(1)).get('slow'));
   if (slow > 0) animator.timeScale = 1 / slow;
@@ -122,6 +127,9 @@ export function installDebug({
     },
     cellToScreen,
     refresh,
+    play(slot, orientation, x, y) {
+      return controller.debugPlace(slot, orientation, x, y);
+    },
     report() {
       return {
         quarter: spin.quarter,
@@ -130,10 +138,13 @@ export function installDebug({
         tray: game.tray.pieces,
         controller: controller.debugState(),
         camera: rig.debugState(),
+        drawn: board.drawnCount,
+        locked: controller.locked,
       };
     },
   };
   window.tetrix = api;
+  showErrors();
   runHashScript(api);
   showFps();
   console.info('[tetrix] debug API on window.tetrix');
@@ -205,6 +216,29 @@ function scriptedHold(
   }
   // Let the board spin / slide settle before releasing.
   if (params.has('drop')) setTimeout(() => api.drop(), 1200);
+}
+
+/** Dev-only: show runtime errors on screen so they can be screenshotted. */
+function showErrors(): void {
+  const box = document.createElement('pre');
+  box.id = 'dev-errors';
+  box.style.cssText =
+    'position:fixed;left:8px;right:8px;top:100px;max-height:50vh;overflow:auto;margin:0;padding:10px;' +
+    'background:#3b1111ee;color:#ffd6d6;font:12px/1.4 monospace;white-space:pre-wrap;z-index:99;display:none';
+  document.body.appendChild(box);
+  const show = (label: string, err: unknown): void => {
+    const text =
+      err instanceof Error
+        ? `${err.message}
+${err.stack ?? ''}`
+        : String(err);
+    box.textContent += `[${label}] ${text}
+
+`;
+    box.style.display = 'block';
+  };
+  window.addEventListener('error', (e) => show('error', e.error ?? e.message));
+  window.addEventListener('unhandledrejection', (e) => show('unhandled promise', e.reason));
 }
 
 function showFps(): void {
