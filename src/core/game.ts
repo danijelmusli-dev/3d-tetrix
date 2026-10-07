@@ -39,7 +39,7 @@ export function scoreFor(placedCells: number, steps: readonly ClearStep[]): numb
 }
 
 export class Game {
-  readonly grid: Grid;
+  grid: Grid;
   tray: Tray;
   score = 0;
   gameOver = false;
@@ -51,9 +51,10 @@ export class Game {
     this.gameOver = !this.hasAnyMove();
   }
 
-  /** Start over: empty board, zero score, fresh tray. */
-  reset(seed = Date.now()): void {
-    this.grid.cells.fill(0);
+  /** Start over: empty board (optionally a new size), zero score, fresh tray. */
+  reset(seed = Date.now(), size = this.grid.size, height = this.grid.height): void {
+    if (size !== this.grid.size || height !== this.grid.height) this.grid = new Grid(size, height);
+    else this.grid.cells.fill(0);
     this.tray = new Tray(createRng(seed));
     this.score = 0;
     this.gameOver = !this.hasAnyMove();

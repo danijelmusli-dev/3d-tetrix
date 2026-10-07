@@ -425,3 +425,93 @@ button:focus-visible {
     height: 44px;
   }
 }
+
+.board-button {
+  position: fixed;
+  top: 16px;
+  right: 64px;
+  height: 40px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 20px;
+  background: #52646e;
+  color: #e6eef2;
+  font-size: 14px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+
+.board-panel {
+  position: fixed;
+  top: 64px;
+  right: 16px;
+  width: min(260px, calc(100vw - 32px));
+  padding: 18px 20px;
+  border-radius: 16px;
+  background: #2a3237;
+  color: #e6eef2;
+  box-shadow: 0 12px 40px rgb(0 0 0 / 45%);
+  z-index: 11;
+}
+
+.board-panel h2 {
+  margin: 0 0 12px;
+  font-size: 18px;
+}
+
+.board-field {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  font-size: 14px;
+}
+
+.board-field select {
+  min-width: 72px;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 8px;
+  background: #3a464d;
+  color: #e6eef2;
+  font-size: 15px;
+}
+
+.board-panel p {
+  margin: 4px 0 14px;
+  font-size: 13px;
+  color: #9fb3bf;
+}
+
+.board-start {
+  width: 100%;
+  padding: 10px;
+  border: 0;
+  border-radius: 10px;
+  background: #d9a441;
+  color: #1e2428;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.game-over-link {
+  display: block;
+  margin: 14px auto 0;
+  border: 0;
+  background: none;
+  color: #9fb3bf;
+  font-size: 14px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+@media (max-width: 600px) {
+  .board-button {
+    top: 10px;
+    right: 58px;
+    height: 36px;
+    padding: 0 10px;
+  }
+}

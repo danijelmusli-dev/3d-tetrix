@@ -1,5 +1,4 @@
 import './style.css';
-import { BOARD_HEIGHT, BOARD_SIZE } from './config';
 import { Game, POINTS_PER_CLEARED_CELL, POINTS_PER_PLACED_CELL } from './core/game';
 import { TRAY_SLOTS } from './core/tray';
 import { bindKeys } from './input/keyboard';
@@ -12,26 +11,41 @@ import { GhostView } from './render/ghostView';
 import { animatePlacement } from './render/placeAnimation';
 import { createScene } from './render/scene';
 import { createPieceThumbnails } from './render/thumbnails';
+import { BoardSettings } from './ui/boardSettings';
 import { createSpinButtons } from './ui/controls';
 import { createHelp } from './ui/help';
 import { Hud } from './ui/hud';
 import { PieceControls } from './ui/pieceControls';
-import { loadBest, saveBest } from './ui/storage';
+import {
+  isValidBoard,
+  loadBest,
+  loadBoard,
+  saveBest,
+  saveBoard,
+  type BoardDims,
+} from './ui/storage';
 import { TrayView } from './ui/trayView';
 
 const container = document.getElementById('app');
 if (!container) throw new Error('#app container missing');
 
-const { renderer, scene, camera } = createScene(container);
+const { renderer, scene, camera, fitShadows } = createScene(container);
 const animator = new Animator();
-const debugSeed = import.meta.env.DEV
-  ? Number(new URLSearchParams(location.hash.slice(1)).get('seed')) || undefined
-  : undefined;
-const game = new Game({ size: BOARD_SIZE, height: BOARD_HEIGHT, seed: debugSeed });
-const board = new BoardView(BOARD_SIZE, BOARD_HEIGHT);
-scene.add(board.group);
+const hashParams = new URLSearchParams(location.hash.slice(1));
+const debugSeed = import.meta.env.DEV ? Number(hashParams.get('seed')) || undefined : undefined;
+/** Dev: #size=8&height=6 overrides the saved board size. */
+const debugDims = {
+  size: Number(hashParams.get('size')),
+  height: Number(hashParams.get('height') ?? hashParams.get('size')),
+};
+let dims: BoardDims = import.meta.env.DEV && isValidBoard(debugDims) ? debugDims : loadBoard();
 
-const rig = new CameraRig(camera, BOARD_SIZE, BOARD_HEIGHT, animator);
+const game = new Game({ size: dims.size, height: dims.height, seed: debugSeed });
+const board = new BoardView(dims.size, dims.height);
+scene.add(board.group);
+fitShadows(dims.size, dims.height);
+
+const rig = new CameraRig(camera, dims.size, dims.height, animator);
 const spin = new BoardSpin(board.group, animator);
 const ghost = new GhostView(board);
 
@@ -80,7 +94,7 @@ const controller = new PieceController({
       const newBest = game.score > best;
       if (newBest) {
         best = game.score;
-        saveBest(best);
+        saveBest(dims, best);
         hud.setBest(best);
       }
       if (result.gameOver) hud.showGameOver(game.score, newBest && game.score > startBest);
@@ -113,8 +127,12 @@ const pieceControls = new PieceControls({
 });
 createHelp();
 
-const hud = new Hud(animator, restart);
-let best = loadBest();
+const settings = new BoardSettings(dims, startGame);
+const hud = new Hud(animator, restart, () => {
+  hud.hideGameOver();
+  settings.open();
+});
+let best = loadBest(dims);
 /** Best score when the current game started, to tell whether this game beat it. */
 let startBest = best;
 hud.setBest(best);
@@ -131,13 +149,25 @@ function layout(): void {
 window.addEventListener('resize', layout);
 layout();
 
-function restart(): void {
-  startBest = best;
-  game.reset();
+/** New game on a (possibly) different board size. */
+function startGame(next: BoardDims): void {
+  dims = next;
+  saveBoard(dims);
+  game.reset(undefined, dims.size, dims.height);
+  board.resize(dims.size, dims.height);
+  rig.resize(dims.size, dims.height);
+  fitShadows(dims.size, dims.height);
   controller.reset();
   refresh();
+  best = startBest = loadBest(dims);
+  hud.setBest(best);
   hud.setScore(0, false);
   hud.hideGameOver();
+  settings.setCurrent(dims);
+}
+
+function restart(): void {
+  startGame(dims);
 }
 
 if (import.meta.env.DEV) {

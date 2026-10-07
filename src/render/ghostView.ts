@@ -64,7 +64,8 @@ export class GhostView {
     valid: boolean,
     carrierZ?: number,
   ): void {
-    const key = `${cells.map((c) => c.join()).join(';')}|${x},${y},${z}|${colorId}|${valid}|${carrierZ}`;
+    // Board size is part of the key: cell positions shift when the board is resized.
+    const key = `${this.board.size}|${cells.map((c) => c.join()).join(';')}|${x},${y},${z}|${colorId}|${valid}|${carrierZ}`;
     this.group.visible = true;
     if (key === this.key) return;
     this.key = key;

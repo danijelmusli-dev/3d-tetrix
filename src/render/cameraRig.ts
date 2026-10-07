@@ -18,8 +18,8 @@ export class CameraRig {
 
   constructor(
     private readonly camera: THREE.PerspectiveCamera,
-    private readonly size: number,
-    private readonly maxLayers: number,
+    private size: number,
+    private maxLayers: number,
     private readonly animator: Animator,
   ) {
     const elev = THREE.MathUtils.degToRad(CAMERA.elevationDeg);
@@ -29,6 +29,15 @@ export class CameraRig {
       Math.sin(elev),
       Math.cos(elev) * Math.cos(azim),
     );
+    this.goal = this.visibleLayers = this.layersFor(0);
+    this.apply();
+  }
+
+  /** New board dimensions: snap straight to the empty-board framing. */
+  resize(size: number, maxLayers: number): void {
+    this.tween?.cancel();
+    this.size = size;
+    this.maxLayers = maxLayers;
     this.goal = this.visibleLayers = this.layersFor(0);
     this.apply();
   }

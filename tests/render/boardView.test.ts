@@ -68,3 +68,45 @@ describe('BoardView.pickColumn', () => {
     expect(hit).toEqual([6, 2]);
   });
 });
+
+describe.each([6, 14])('BoardView on a %i-wide board', (size) => {
+  it('picks columns across the whole footprint', () => {
+    const board = new BoardView(size, 8);
+    board.group.updateMatrixWorld(true);
+    board.sync(new Grid(size, 8));
+    for (const [x, y] of [
+      [0, 0],
+      [size - 1, size - 1],
+      [Math.floor(size / 2), 1],
+    ] as const)
+      expect(board.pickColumn(rayDown(board, x, y))).toEqual([x, y]);
+  });
+});
+
+describe('BoardView.resize', () => {
+  it('rebuilds for the new size, keeps other children and starts empty', () => {
+    const board = new BoardView(10, 10);
+    const ghost = new THREE.Group();
+    board.group.add(ghost);
+    const grid = new Grid(10, 10);
+    grid.set(0, 0, 0, 1);
+    board.sync(grid);
+    expect(board.drawnCount).toBe(1);
+
+    board.resize(6, 8);
+    expect([board.size, board.height]).toEqual([6, 8]);
+    expect(board.drawnCount).toBe(0);
+    expect(board.group.children).toContain(ghost);
+    board.group.updateMatrixWorld(true);
+    expect(board.pickColumn(rayDown(board, 5, 5))).toEqual([5, 5]);
+  });
+
+  it('is a no-op for the same size', () => {
+    const board = new BoardView(10, 10);
+    const grid = new Grid(10, 10);
+    grid.set(1, 1, 0, 1);
+    board.sync(grid);
+    board.resize(10, 10);
+    expect(board.drawnCount).toBe(1);
+  });
+});

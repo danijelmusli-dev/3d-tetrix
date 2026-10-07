@@ -17,6 +17,7 @@ export class Hud {
   constructor(
     private readonly animator: Animator,
     onRestart: () => void,
+    onChangeBoard: () => void,
   ) {
     const score = (this.scoreEl = el('div', 'hud-score'));
     score.append(
@@ -36,12 +37,16 @@ export class Hud {
     const again = el('button', 'game-over-button', 'Play again') as HTMLButtonElement;
     again.type = 'button';
     again.addEventListener('click', onRestart);
+    const change = el('button', 'game-over-link', 'Change board size') as HTMLButtonElement;
+    change.type = 'button';
+    change.addEventListener('click', onChangeBoard);
     card.append(
       title,
       el('p', 'game-over-label', 'Final score'),
       (this.finalScore = el('p', 'game-over-score')),
       (this.newBest = el('p', 'game-over-best', 'New best!')),
       again,
+      change,
     );
     this.gameOver.appendChild(card);
 

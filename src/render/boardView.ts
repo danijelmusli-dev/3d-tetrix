@@ -47,14 +47,35 @@ export function pieceColor(colorId: number): THREE.Color {
  */
 export class BoardView {
   readonly group = new THREE.Group();
-  private readonly cubes: THREE.InstancedMesh;
+  /** Slab, cell lines and cubes; rebuilt on resize (other children, like the ghost, stay). */
+  private readonly fixtures = new THREE.Group();
+  private cubes!: THREE.InstancedMesh;
 
   constructor(
-    readonly size: number,
-    readonly height: number,
+    public size: number,
+    public height: number,
   ) {
+    this.group.add(this.fixtures);
+    this.build();
+  }
+
+  /** Rebuild for a new board size. The board is empty afterwards; call `sync`. */
+  resize(size: number, height: number): void {
+    if (size === this.size && height === this.height) return;
+    this.fixtures.traverse((object) => {
+      if (!(object instanceof THREE.Mesh || object instanceof THREE.LineSegments)) return;
+      if (object.geometry !== cubeGeometry) object.geometry.dispose();
+      (object.material as THREE.Material).dispose();
+    });
+    this.fixtures.clear();
+    this.size = size;
+    this.height = height;
+    this.build();
+  }
+
+  private build(): void {
     this.cubes = this.createCubes();
-    this.group.add(this.createSlab(), this.createCellLines(), this.cubes);
+    this.fixtures.add(this.createSlab(), this.createCellLines(), this.cubes);
   }
 
   /** Number of cubes currently drawn (debug checks). */

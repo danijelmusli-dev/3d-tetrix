@@ -1,0 +1,71 @@
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import {
+  DEFAULT_BOARD,
+  isValidBoard,
+  loadBest,
+  loadBoard,
+  saveBest,
+  saveBoard,
+} from '../../src/ui/storage';
+
+function stubStorage(): Map<string, string> {
+  const data = new Map<string, string>();
+  vi.stubGlobal('localStorage', {
+    getItem: (k: string) => data.get(k) ?? null,
+    setItem: (k: string, v: string) => void data.set(k, v),
+  });
+  return data;
+}
+
+afterEach(() => vi.unstubAllGlobals());
+
+describe('board size storage', () => {
+  it('round-trips a valid size', () => {
+    stubStorage();
+    saveBoard({ size: 8, height: 12 });
+    expect(loadBoard()).toEqual({ size: 8, height: 12 });
+  });
+
+  it('falls back to the default for missing or invalid values', () => {
+    const data = stubStorage();
+    expect(loadBoard()).toEqual(DEFAULT_BOARD);
+    data.set('tetrix.board', '99x3');
+    expect(loadBoard()).toEqual(DEFAULT_BOARD);
+    data.set('tetrix.board', 'junk');
+    expect(loadBoard()).toEqual(DEFAULT_BOARD);
+  });
+
+  it('validates limits', () => {
+    expect(isValidBoard({ size: 6, height: 14 })).toBe(true);
+    expect(isValidBoard({ size: 5, height: 10 })).toBe(false);
+    expect(isValidBoard({ size: 10, height: 15 })).toBe(false);
+    expect(isValidBoard({ size: 7.5, height: 10 })).toBe(false);
+  });
+});
+
+describe('best score storage', () => {
+  it('keeps a separate best per board size', () => {
+    const data = stubStorage();
+    saveBest({ size: 10, height: 10 }, 500);
+    saveBest({ size: 8, height: 6 }, 120);
+    expect(loadBest({ size: 10, height: 10 })).toBe(500);
+    expect(loadBest({ size: 8, height: 6 })).toBe(120);
+    expect(loadBest({ size: 12, height: 12 })).toBe(0);
+    expect(data.get('tetrix.best')).toBe('500'); // 10x10 keeps the original key
+  });
+
+  it('survives storage that throws', () => {
+    vi.stubGlobal('localStorage', {
+      getItem: () => {
+        throw new Error('blocked');
+      },
+      setItem: () => {
+        throw new Error('blocked');
+      },
+    });
+    expect(loadBest(DEFAULT_BOARD)).toBe(0);
+    expect(loadBoard()).toEqual(DEFAULT_BOARD);
+    expect(() => saveBest(DEFAULT_BOARD, 5)).not.toThrow();
+    expect(() => saveBoard(DEFAULT_BOARD)).not.toThrow();
+  });
+});

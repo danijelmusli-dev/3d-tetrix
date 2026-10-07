@@ -3,6 +3,9 @@ export const BOARD_SIZE = 10;
 /** Max stack height in layers. */
 export const BOARD_HEIGHT = 10;
 
+/** Board sizes players can pick (pieces are 4 long, so 6 leaves room to move). */
+export const BOARD_LIMITS = { minSize: 6, maxSize: 14, minHeight: 6, maxHeight: 14 } as const;
+
 /** Piece colors, indexed by colorId - 1 (colorId 0 = empty cell). */
 export const PIECE_COLORS = [
   0xd9a441, // I - yellow
