@@ -72,6 +72,17 @@ describe('Game', () => {
     expect(game.tray.pieces.every((p) => p !== null)).toBe(true);
   });
 
+  it('placeFree drops any piece without touching the tray', () => {
+    const game = gameWith(['I', 'O', 'T']);
+    const res = game.placeFree('L', 0, 0, 0)!;
+    expect(res.pieceId).toBe('L');
+    expect(res.trayRefilled).toBe(false);
+    expect(game.tray.pieces).toEqual(['I', 'O', 'T']);
+    expect(game.score).toBe(4);
+    expect(game.placeFree('I', 0, 8, 0)).toBeNull();
+    expect(game.placeFree('I', 99, 0, 0)).toBeNull();
+  });
+
   it('detects game over when no tray piece fits', () => {
     const size = 10;
     const height = 4;

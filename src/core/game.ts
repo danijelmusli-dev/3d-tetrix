@@ -62,6 +62,26 @@ export class Game {
     if (z === null) return null;
 
     const pieceId = this.tray.take(slot);
+    const trayRefilled = this.tray.refillIfEmpty();
+    return this.commit(pieceId, orientation, x, y, z, trayRefilled);
+  }
+
+  /** Drop any piece, bypassing the tray (debug tooling). Still scores and clears. */
+  placeFree(pieceId: PieceId, orientation: number, x: number, y: number): PlaceResult | null {
+    const o = getOrientations(pieceId)[orientation];
+    const z = o ? dropZ(this.grid, o.cells, x, y) : null;
+    if (z === null) return null;
+    return this.commit(pieceId, orientation, x, y, z, false);
+  }
+
+  private commit(
+    pieceId: PieceId,
+    orientation: number,
+    x: number,
+    y: number,
+    z: number,
+    trayRefilled: boolean,
+  ): PlaceResult {
     const { colorId } = PIECES[pieceId];
     const placed = getOrientations(pieceId)[orientation]!.cells.map(([dx, dy, dz]): Vec3 => [
       x + dx,
@@ -73,7 +93,6 @@ export class Game {
     const steps = resolveCascade(this.grid);
     const scoreDelta = scoreFor(placed.length, steps);
     this.score += scoreDelta;
-    const trayRefilled = this.tray.refillIfEmpty();
     this.gameOver = !this.hasAnyMove();
 
     return { pieceId, colorId, placed, steps, scoreDelta, trayRefilled, gameOver: this.gameOver };

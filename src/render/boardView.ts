@@ -1,9 +1,17 @@
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
-import { COLORS } from '../config';
+import { COLORS, PIECE_COLORS } from '../config';
+import type { Grid } from '../core/grid';
 
 const SLAB_THICKNESS = 0.3;
 const SLAB_MARGIN = 0.4;
+
+/** Shared beveled unit cube used by every cube on the board. */
+export const cubeGeometry = new RoundedBoxGeometry(1, 1, 1, 2, 0.025);
+
+export function pieceColor(colorId: number): THREE.Color {
+  return new THREE.Color(PIECE_COLORS[colorId - 1] ?? 0xffffff);
+}
 
 /**
  * Board and everything standing on it live in `group`, so rotating the board
@@ -14,17 +22,50 @@ const SLAB_MARGIN = 0.4;
  */
 export class BoardView {
   readonly group = new THREE.Group();
-  readonly size: number;
+  private readonly cubes: THREE.InstancedMesh;
 
-  constructor(size: number) {
-    this.size = size;
-    this.group.add(this.createSlab(), this.createCellLines());
+  constructor(
+    readonly size: number,
+    readonly height: number,
+  ) {
+    this.cubes = this.createCubes();
+    this.group.add(this.createSlab(), this.createCellLines(), this.cubes);
   }
 
   /** Local-space center of grid cell (x, y, z). */
   cellCenter(x: number, y: number, z: number): THREE.Vector3 {
     const half = this.size / 2;
     return new THREE.Vector3(x - half + 0.5, z + 0.5, y - half + 0.5);
+  }
+
+  /** Redraw every placed cube from the grid. */
+  sync(grid: Grid): void {
+    const matrix = new THREE.Matrix4();
+    let i = 0;
+    for (const { pos, colorId } of grid.filled()) {
+      matrix.setPosition(this.cellCenter(...pos));
+      this.cubes.setMatrixAt(i, matrix);
+      this.cubes.setColorAt(i, pieceColor(colorId));
+      i++;
+    }
+    this.cubes.count = i;
+    this.cubes.instanceMatrix.needsUpdate = true;
+    if (this.cubes.instanceColor) this.cubes.instanceColor.needsUpdate = true;
+  }
+
+  private createCubes(): THREE.InstancedMesh {
+    const capacity = this.size * this.size * this.height;
+    const mesh = new THREE.InstancedMesh(
+      cubeGeometry,
+      new THREE.MeshStandardMaterial({ roughness: 0.55 }),
+      capacity,
+    );
+    mesh.count = 0;
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    // Instances move every sync; skip bounding-sphere culling (board is always on screen).
+    mesh.frustumCulled = false;
+    return mesh;
   }
 
   private createSlab(): THREE.Mesh {
@@ -52,17 +93,4 @@ export class BoardView {
       new THREE.LineBasicMaterial({ color: COLORS.cellLines, transparent: true, opacity: 0.35 }),
     );
   }
-}
-
-const cubeGeometry = new RoundedBoxGeometry(1, 1, 1, 2, 0.025);
-
-/** Single beveled unit cube; Phase 2 replaces per-mesh cubes with InstancedMesh. */
-export function createCube(color: number): THREE.Mesh {
-  const cube = new THREE.Mesh(
-    cubeGeometry,
-    new THREE.MeshStandardMaterial({ color, roughness: 0.55 }),
-  );
-  cube.castShadow = true;
-  cube.receiveShadow = true;
-  return cube;
 }

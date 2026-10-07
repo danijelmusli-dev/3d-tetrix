@@ -20,11 +20,14 @@ export const COLORS = {
   cellLines: 0x6d808b,
 } as const;
 
-/** Fixed camera: 3/4 view from a corner, matching the reference image. */
+/**
+ * Fixed camera: 3/4 view from a corner, matching the reference image.
+ * Distance is auto-fit so the full board volume (all layers) stays on screen.
+ */
 export const CAMERA = {
   fov: 35,
   elevationDeg: 36,
   azimuthDeg: -40,
-  distance: 23,
-  targetY: 0.8,
+  /** Fraction of the viewport kept free around the board volume. */
+  margin: 0.06,
 } as const;

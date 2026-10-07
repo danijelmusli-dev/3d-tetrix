@@ -7,7 +7,7 @@ export interface SceneContext {
   camera: THREE.PerspectiveCamera;
 }
 
-export function createScene(container: HTMLElement): SceneContext {
+export function createScene(container: HTMLElement, size: number, height: number): SceneContext {
   const renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.shadowMap.enabled = true;
@@ -18,14 +18,6 @@ export function createScene(container: HTMLElement): SceneContext {
   scene.background = new THREE.Color(COLORS.background);
 
   const camera = new THREE.PerspectiveCamera(CAMERA.fov, 1, 0.1, 500);
-  const elev = THREE.MathUtils.degToRad(CAMERA.elevationDeg);
-  const azim = THREE.MathUtils.degToRad(CAMERA.azimuthDeg);
-  camera.position.set(
-    CAMERA.distance * Math.cos(elev) * Math.sin(azim),
-    CAMERA.distance * Math.sin(elev) + CAMERA.targetY,
-    CAMERA.distance * Math.cos(elev) * Math.cos(azim),
-  );
-  camera.lookAt(0, CAMERA.targetY, 0);
 
   addLights(scene);
 
@@ -34,11 +26,54 @@ export function createScene(container: HTMLElement): SceneContext {
     renderer.setSize(w, h);
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
+    fitCamera(camera, size, height);
   };
   window.addEventListener('resize', resize);
   resize();
 
   return { renderer, scene, camera };
+}
+
+/**
+ * Keep the fixed viewing angle and move the camera along it until the whole
+ * size x height x size board volume fits in the viewport.
+ */
+export function fitCamera(camera: THREE.PerspectiveCamera, size: number, height: number): void {
+  const elev = THREE.MathUtils.degToRad(CAMERA.elevationDeg);
+  const azim = THREE.MathUtils.degToRad(CAMERA.azimuthDeg);
+  const dir = new THREE.Vector3(
+    Math.cos(elev) * Math.sin(azim),
+    Math.sin(elev),
+    Math.cos(elev) * Math.cos(azim),
+  );
+  const target = new THREE.Vector3(0, height / 2, 0);
+  const half = size / 2;
+  const corners: THREE.Vector3[] = [];
+  for (const x of [-half, half])
+    for (const y of [0, height])
+      for (const z of [-half, half]) corners.push(new THREE.Vector3(x, y, z));
+
+  const limit = 1 - CAMERA.margin;
+  const place = (distance: number): void => {
+    camera.position.copy(target).addScaledVector(dir, distance);
+    camera.lookAt(target);
+    camera.updateMatrixWorld();
+  };
+  const fits = (): boolean =>
+    corners.every((c) => {
+      const p = c.clone().project(camera);
+      return Math.abs(p.x) <= limit && Math.abs(p.y) <= limit;
+    });
+
+  let lo = 1;
+  let hi = 500;
+  for (let i = 0; i < 40; i++) {
+    const mid = (lo + hi) / 2;
+    place(mid);
+    if (fits()) hi = mid;
+    else lo = mid;
+  }
+  place(hi);
 }
 
 function addLights(scene: THREE.Scene): void {
