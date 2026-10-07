@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import type { Game, PlaceResult } from '../core/game';
 import { getOrientations } from '../core/orientations';
 import { PIECES } from '../core/pieces';
-import { restingZ } from '../core/placement';
+import { fallZ, fits, restingZ, slideToward } from '../core/placement';
 import type { BoardSpin } from '../render/boardSpin';
 import type { BoardView } from '../render/boardView';
 import type { GhostView } from '../render/ghostView';
@@ -35,21 +35,37 @@ interface Target {
   z: number | null;
 }
 
+interface FreePosition {
+  x: number;
+  y: number;
+  z: number;
+}
+
 /**
  * Picking a tray piece, aiming it over the board, rotating it and dropping it.
  * Press-drag-release from the tray, or click a slot then click the board.
+ *
+ * Holding Shift switches to free move: the piece's layer locks at its current
+ * landing height and it slides toward the cursor within that layer (never
+ * through cubes), so it can be tucked under overhangs. W/S or the wheel change
+ * the layer. On release it falls until supported.
  */
 export class PieceController {
   private held: Held | null = null;
   private pointer: { x: number; y: number } | null = null;
   private pressAt: { x: number; y: number } | null = null;
   private dragged = false;
+  private free: FreePosition | null = null;
   private readonly raycaster = new THREE.Raycaster();
 
   constructor(private readonly deps: PieceControllerDeps) {
     const { canvas } = deps;
     window.addEventListener('pointermove', (e) => this.onMove(e));
     window.addEventListener('pointerup', (e) => this.onUp(e));
+    window.addEventListener('keyup', (e) => {
+      if (e.key === 'Shift') this.setFree(false);
+    });
+    window.addEventListener('blur', () => this.setFree(false));
     canvas.addEventListener('pointerdown', (e) => this.onCanvasDown(e));
     canvas.addEventListener('contextmenu', (e) => {
       e.preventDefault();
@@ -60,7 +76,10 @@ export class PieceController {
       (e) => {
         if (!this.held) return;
         e.preventDefault();
-        this.rotate('spin', e.deltaY > 0 ? 1 : -1);
+        // Shift+wheel scrolls horizontally in some browsers, so read either axis.
+        const dir = (e.deltaY || e.deltaX) > 0 ? 1 : -1;
+        if (this.free) this.raise(dir === 1 ? -1 : 1);
+        else this.rotate('spin', dir);
       },
       { passive: false },
     );
@@ -76,8 +95,34 @@ export class PieceController {
     held: Held | null;
     pointer: { x: number; y: number } | null;
     target: Target | null;
+    free: FreePosition | null;
   } {
-    return { held: this.held && { ...this.held }, pointer: this.pointer, target: this.target() };
+    return {
+      held: this.held && { ...this.held },
+      pointer: this.pointer,
+      target: this.target(),
+      free: this.free && { ...this.free },
+    };
+  }
+
+  /** Enter (Shift down) or leave (Shift up) free move. */
+  setFree(on: boolean): void {
+    if (!on) {
+      this.free = null;
+      return;
+    }
+    if (this.free || !this.held) return;
+    const target = this.target();
+    if (target?.z == null) return; // only lock onto a legal landing spot
+    this.free = { x: target.x, y: target.y, z: target.z };
+  }
+
+  /** Free move: change the carried layer by `dz` if the piece fits there. */
+  raise(dz: 1 | -1): void {
+    const { free } = this;
+    const cells = this.heldCells();
+    if (!free || !cells) return;
+    if (fits(this.deps.game.grid, cells, free.x, free.y, free.z + dz)) free.z += dz;
   }
 
   /** Tray slot pressed. Pressing the held slot again puts it back. */
@@ -96,17 +141,20 @@ export class PieceController {
   rotate(kind: RotationKind, dir: 1 | -1): void {
     if (!this.held) return;
     const id = this.deps.game.tray.pieces[this.held.slot]!;
-    this.held.orientation = rotateForView(
-      id,
-      this.held.orientation,
-      kind,
-      this.deps.spin.quarter,
-      dir,
-    );
+    const next = rotateForView(id, this.held.orientation, kind, this.deps.spin.quarter, dir);
+    const { free } = this;
+    // In free move the piece is inside the stack: only rotate if it still fits.
+    if (
+      free &&
+      !fits(this.deps.game.grid, getOrientations(id)[next]!.cells, free.x, free.y, free.z)
+    )
+      return;
+    this.held.orientation = next;
   }
 
   cancel(): void {
     this.held = null;
+    this.free = null;
     this.pressAt = null;
     this.deps.ghost.hide();
     this.renderTray();
@@ -114,6 +162,10 @@ export class PieceController {
 
   /** Per-frame: keep the ghost on the aimed spot (the board may be spinning). */
   update(): void {
+    if (this.free) {
+      this.updateFree(this.free);
+      return;
+    }
     const held = this.held;
     const target = this.target();
     if (!held || !target) {
@@ -126,6 +178,24 @@ export class PieceController {
     // Invalid drops show where the piece would rest, poking above the cap.
     const z = target.z ?? restingZ(game.grid, o.cells, target.x, target.y) ?? 0;
     this.deps.ghost.show(o.cells, target.x, target.y, z, PIECES[id].colorId, target.z !== null);
+  }
+
+  /** Slide toward the aimed column in the locked layer; show where it will settle. */
+  private updateFree(free: FreePosition): void {
+    const { game } = this.deps;
+    const id = game.tray.pieces[this.held!.slot]!;
+    const o = getOrientations(id)[this.held!.orientation]!;
+    const column = this.aimedColumn();
+    const anchor = column && anchorFor(column, o.extent, game.grid.size);
+    if (anchor)
+      [free.x, free.y] = slideToward(game.grid, o.cells, [free.x, free.y], free.z, anchor);
+    const rest = fallZ(game.grid, o.cells, free.x, free.y, free.z) ?? free.z;
+    this.deps.ghost.show(o.cells, free.x, free.y, rest, PIECES[id].colorId, true, free.z);
+  }
+
+  private heldCells(): readonly (readonly [number, number, number])[] | null {
+    const id = this.held && this.deps.game.tray.pieces[this.held.slot];
+    return id ? getOrientations(id)[this.held!.orientation]!.cells : null;
   }
 
   private onCanvasDown(e: PointerEvent): void {
@@ -164,32 +234,45 @@ export class PieceController {
   }
 
   private tryPlace(): boolean {
-    const held = this.held;
-    const target = this.target();
-    if (!held || !target || target.z === null) return false;
-    const result = this.deps.game.place(held.slot, held.orientation, target.x, target.y);
+    const { held, free } = this;
+    if (!held) return false;
+    let result: PlaceResult | null;
+    if (free) {
+      result = this.deps.game.placeAt(held.slot, held.orientation, free.x, free.y, free.z);
+    } else {
+      const target = this.target();
+      if (!target || target.z === null) return false;
+      result = this.deps.game.place(held.slot, held.orientation, target.x, target.y);
+    }
     if (!result) return false;
     this.held = null;
+    this.free = null;
     this.deps.ghost.hide();
     this.renderTray();
     this.deps.onPlaced(result);
     return true;
   }
 
-  private target(): Target | null {
-    const { held, pointer } = this;
-    if (!held || !pointer) return null;
-    const { game, board, camera, canvas } = this.deps;
-    if (this.deps.tray.contains(pointer.x, pointer.y)) return null;
-
+  /** Grid column under the pointer (may be off the board), or null. */
+  private aimedColumn(): [number, number] | null {
+    const { pointer } = this;
+    if (!pointer || this.deps.tray.contains(pointer.x, pointer.y)) return null;
+    const { board, camera, canvas } = this.deps;
     const rect = canvas.getBoundingClientRect();
     const ndc = new THREE.Vector2(
       ((pointer.x - rect.left) / rect.width) * 2 - 1,
       -((pointer.y - rect.top) / rect.height) * 2 + 1,
     );
     this.raycaster.setFromCamera(ndc, camera);
-    const column = board.pickColumn(this.raycaster);
-    if (!column) return null;
+    return board.pickColumn(this.raycaster);
+  }
+
+  /** Drop-from-above target under the pointer. */
+  private target(): Target | null {
+    const { held } = this;
+    const column = held && this.aimedColumn();
+    if (!held || !column) return null;
+    const { game } = this.deps;
 
     const id = game.tray.pieces[held.slot]!;
     const o = getOrientations(id)[held.orientation]!;

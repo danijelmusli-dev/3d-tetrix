@@ -4,6 +4,9 @@
  * Console:  tetrix.place('I', 0, 2, 3)   tetrix.orientations('L')   tetrix.fill(3)   tetrix.spin(1)
  * URL hash: #place=I,0,0,0;T,1,4,4   #fill=3   #spin=1   (runs on load, for screenshots)
  *           #seed=7&hold=0&aim=600,400&rot=spin,tip&drop   (scripted tray drag)
+ *           ...&free&slide=700,420&lift=1               (Shift free move, then slide/raise)
+ *           aimcell=x,y,z / slidecell=x,y,z  aim at a grid cell instead of pixels
+ *           #cave   roof over x>=2 at z=1 (diagonal holes), open cave mouth at x=0..1
  */
 import type { Game, PlaceResult } from './core/game';
 import { getOrientations } from './core/orientations';
@@ -18,6 +21,8 @@ export interface DebugDeps {
   spin: BoardSpin;
   controller: PieceController;
   rig: CameraRig;
+  /** Screen (client px) position of grid cell center (x, y, z). */
+  cellToScreen: (x: number, y: number, z: number) => [number, number];
   /** Redraw the board and refit the camera after grid changes. */
   refresh: () => void;
 }
@@ -36,6 +41,11 @@ export interface DebugApi {
   /** Release the pointer at its last position (places if valid). */
   drop(): void;
   report(): Record<string, unknown>;
+  /** Simulate holding / releasing Shift (free move). */
+  free(on: boolean): void;
+  raise(dz: 1 | -1): void;
+  cellToScreen(x: number, y: number, z: number): [number, number];
+  refresh(): void;
 }
 
 declare global {
@@ -44,7 +54,14 @@ declare global {
   }
 }
 
-export function installDebug({ game, spin, controller, rig, refresh }: DebugDeps): void {
+export function installDebug({
+  game,
+  spin,
+  controller,
+  rig,
+  refresh,
+  cellToScreen,
+}: DebugDeps): void {
   let last = { clientX: 0, clientY: 0 };
   const pointer = (type: string, x: number, y: number): void => {
     last = { clientX: x, clientY: y };
@@ -89,6 +106,14 @@ export function installDebug({ game, spin, controller, rig, refresh }: DebugDeps
     drop() {
       pointer('pointerup', last.clientX, last.clientY);
     },
+    free(on) {
+      controller.setFree(on);
+    },
+    raise(dz) {
+      controller.raise(dz);
+    },
+    cellToScreen,
+    refresh,
     report() {
       return {
         quarter: spin.quarter,
@@ -109,6 +134,24 @@ export function installDebug({ game, spin, controller, rig, refresh }: DebugDeps
 function runHashScript(api: DebugApi): void {
   const params = new URLSearchParams(location.hash.slice(1));
   if (params.has('fill')) api.fill(Number(params.get('fill')) || undefined);
+  if (params.has('cave')) {
+    const { grid } = api.game;
+    for (let x = 2; x < grid.size; x++)
+      for (let y = 0; y < grid.size; y++) if (y !== x - 2) grid.set(x, y, 1, 4);
+    api.refresh();
+  }
+  /** `x,y` pixels, or a grid cell via the `<name>cell=x,y,z` param. */
+  const point = (name: string): [number, number] | undefined => {
+    const cell = params.get(`${name}cell`);
+    if (cell) {
+      const [x = 0, y = 0, z = 0] = cell.split(',').map(Number);
+      return api.cellToScreen(x, y, z);
+    }
+    const px = params.get(name);
+    if (!px) return undefined;
+    const [x = 0, y = 0] = px.split(',').map(Number);
+    return [x, y];
+  };
   for (const step of (params.get('place') ?? '').split(';').filter(Boolean)) {
     const [id, o, x, y] = step.split(',');
     if (!PIECE_IDS.includes(id as PieceId)) continue;
@@ -118,13 +161,23 @@ function runHashScript(api: DebugApi): void {
   for (let i = 0; i < Math.abs(turns); i++) api.spin(turns > 0 ? 1 : -1);
 
   if (params.has('hold')) {
-    const [x = 0, y = 0] = (params.get('aim') ?? '').split(',').map(Number);
+    const [x, y] = point('aim') ?? [0, 0];
     api.hold(Number(params.get('hold')), x + 20, y + 20);
     api.aim(x, y); // moving past the drag threshold makes it a drag
     for (const kind of (params.get('rot') ?? '').split(',').filter(Boolean))
       api.rotate(kind as RotationKind);
-    // Let the board spin settle before releasing.
-    if (params.has('drop')) setTimeout(() => api.drop(), 800);
+    if (params.has('free')) {
+      // Lock after the first frame has a target, then slide the pointer.
+      setTimeout(() => {
+        api.free(true);
+        const lift = Number(params.get('lift') ?? 0);
+        for (let i = 0; i < Math.abs(lift); i++) api.raise(lift > 0 ? 1 : -1);
+        const slide = point('slide');
+        if (slide) api.aim(...slide);
+      }, 400);
+    }
+    // Let the board spin / slide settle before releasing.
+    if (params.has('drop')) setTimeout(() => api.drop(), 1200);
   }
 
   // #report: dump state into the DOM for headless `--dump-dom` checks.

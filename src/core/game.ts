@@ -2,7 +2,7 @@ import { resolveCascade, type ClearStep } from './clearing';
 import { Grid, type Vec3 } from './grid';
 import { getOrientations } from './orientations';
 import { PIECES, type PieceId } from './pieces';
-import { dropZ } from './placement';
+import { canReach, dropZ, fallZ } from './placement';
 import { createRng } from './rng';
 import { Tray } from './tray';
 
@@ -64,6 +64,22 @@ export class Game {
     const pieceId = this.tray.take(slot);
     const trayRefilled = this.tray.refillIfEmpty();
     return this.commit(pieceId, orientation, x, y, z, trayRefilled);
+  }
+
+  /**
+   * Free-move placement: put the tray piece at (x, y, z) if it can be
+   * maneuvered there from above without passing through cubes; it then falls
+   * until supported.
+   */
+  placeAt(slot: number, orientation: number, x: number, y: number, z: number): PlaceResult | null {
+    if (this.gameOver) return null;
+    const id = this.tray.pieces[slot];
+    const o = id ? getOrientations(id)[orientation] : undefined;
+    if (!id || !o || !canReach(this.grid, o.cells, x, y, z)) return null;
+    const rest = fallZ(this.grid, o.cells, x, y, z)!;
+    this.tray.take(slot);
+    const trayRefilled = this.tray.refillIfEmpty();
+    return this.commit(id, orientation, x, y, rest, trayRefilled);
   }
 
   /** Drop any piece, bypassing the tray (debug tooling). Still scores and clears. */

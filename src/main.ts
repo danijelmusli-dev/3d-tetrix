@@ -65,9 +65,13 @@ layout();
 bindKeys({
   q: () => spin.turn(1),
   e: () => spin.turn(-1),
-  r: (e) => controller.rotate('spin', e.shiftKey ? -1 : 1),
-  f: (e) => controller.rotate('tip', e.shiftKey ? -1 : 1),
-  t: (e) => controller.rotate('roll', e.shiftKey ? -1 : 1),
+  r: () => controller.rotate('spin', 1),
+  f: () => controller.rotate('tip', 1),
+  t: () => controller.rotate('roll', 1),
+  // Shift held = free move (slide into holes); released via keyup in the controller.
+  shift: () => controller.setFree(true),
+  w: () => controller.raise(1),
+  s: () => controller.raise(-1),
   escape: () => controller.cancel(),
 });
 createSpinButtons(
@@ -85,7 +89,18 @@ function showGameOver(): void {
 
 if (import.meta.env.DEV) {
   void import('./debug').then(({ installDebug }) =>
-    installDebug({ game, spin, controller, rig, refresh }),
+    installDebug({
+      game,
+      spin,
+      controller,
+      rig,
+      refresh,
+      cellToScreen: (x, y, z) => {
+        const v = board.group.localToWorld(board.cellCenter(x, y, z)).project(camera);
+        const rect = renderer.domElement.getBoundingClientRect();
+        return [rect.left + ((v.x + 1) / 2) * rect.width, rect.top + ((1 - v.y) / 2) * rect.height];
+      },
+    }),
   );
 }
 

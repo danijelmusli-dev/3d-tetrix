@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { Game, scoreFor } from '../../src/core/game';
 import { Grid } from '../../src/core/grid';
+import { getOrientations } from '../../src/core/orientations';
 import { PIECES } from '../../src/core/pieces';
 import { createRng } from '../../src/core/rng';
 import { Tray } from '../../src/core/tray';
@@ -72,6 +73,49 @@ describe('Game', () => {
     expect(game.tray.pieces.every((p) => p !== null)).toBe(true);
   });
 
+  describe('placeAt (free move)', () => {
+    const alongY = getOrientations('I').findIndex((o) => o.extent.join() === '1,4,1');
+
+    /**
+     * Roof at z=1 over x=2..9 with isolated diagonal holes (x, x-2) so no line
+     * is full and no flat piece fits through; the cave below opens at x=0..1.
+     */
+    function caveGame(): Game {
+      const grid = new Grid(10, 10);
+      for (let x = 2; x < 10; x++)
+        for (let y = 0; y < 10; y++) if (y !== x - 2) grid.set(x, y, 1, 1);
+      return gameWith(['I', 'O', 'T'], grid);
+    }
+
+    it('places a piece slid under an overhang', () => {
+      const game = caveGame();
+      const res = game.placeAt(0, alongY, 4, 2, 0)!;
+      expect(res.placed).toEqual([
+        [4, 2, 0],
+        [4, 3, 0],
+        [4, 4, 0],
+        [4, 5, 0],
+      ]);
+      expect(game.tray.pieces[0]).toBeNull();
+    });
+
+    it('lets a raised piece fall to rest', () => {
+      const game = gameWith(['I', 'O', 'T']);
+      expect(game.placeAt(0, FLAT, 3, 3, 6)!.placed[0]).toEqual([3, 3, 0]);
+    });
+
+    it('rejects unreachable, blocked or invalid requests', () => {
+      const game = caveGame();
+      expect(game.placeAt(0, FLAT, 4, 2, 0)).toBeNull(); // too wide for the cave mouth
+      expect(game.placeAt(0, alongY, 4, 2, 1)).toBeNull(); // inside the roof
+      expect(game.placeAt(0, 99, 0, 0, 0)).toBeNull();
+      expect(game.placeAt(2, FLAT, 9, 9, 0)).toBeNull(); // T off the board
+      expect(game.tray.pieces).toEqual(['I', 'O', 'T']);
+      game.placeAt(0, alongY, 4, 2, 0);
+      expect(game.placeAt(0, alongY, 6, 2, 0)).toBeNull(); // slot already used
+    });
+  });
+
   it('placeFree drops any piece without touching the tray', () => {
     const game = gameWith(['I', 'O', 'T']);
     const res = game.placeFree('L', 0, 0, 0)!;
@@ -106,6 +150,7 @@ describe('Game', () => {
     expect(res.gameOver).toBe(true);
     expect(game.gameOver).toBe(true);
     expect(game.place(1, FLAT, 0, 0)).toBeNull();
+    expect(game.placeAt(1, FLAT, 0, 0, 3)).toBeNull();
   });
 });
 

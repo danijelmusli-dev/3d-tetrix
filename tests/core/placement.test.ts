@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { Grid, type Vec3 } from '../../src/core/grid';
-import { dropZ, fits, restingZ } from '../../src/core/placement';
+import { canReach, dropZ, fallZ, fits, restingZ, slideToward } from '../../src/core/placement';
 
 const flatI: Vec3[] = [
   [0, 0, 0],
@@ -108,5 +108,82 @@ describe('dropZ', () => {
     // Block under the foot at z=2 stops the whole piece higher.
     g.set(1, 0, 2, 1);
     expect(dropZ(g, hangingL, 0, 0)).toBe(1);
+  });
+});
+
+describe('fallZ', () => {
+  it('falls until supported', () => {
+    const g = new Grid(10, 10);
+    g.set(0, 0, 0, 1);
+    expect(fallZ(g, flatI, 0, 0, 6)).toBe(1);
+    expect(fallZ(g, flatI, 4, 0, 6)).toBe(0);
+  });
+
+  it('is null when the start position is blocked', () => {
+    const g = new Grid(10, 10);
+    g.set(1, 0, 3, 1);
+    expect(fallZ(g, flatI, 0, 0, 3)).toBeNull();
+  });
+});
+
+// I lying along Y: 1 wide in x, so it fits through the 2-wide cave mouth.
+const alongYI: Vec3[] = [
+  [0, 0, 0],
+  [0, 1, 0],
+  [0, 2, 0],
+  [0, 3, 0],
+];
+
+/** Roof over x=2..9, y=0..9 at z=1, leaving the cave beneath (z=0) open at x=0..1. */
+function cave(): Grid {
+  const g = new Grid(10, 10);
+  for (let x = 2; x < 10; x++) for (let y = 0; y < 10; y++) g.set(x, y, 1, 1);
+  return g;
+}
+
+describe('canReach', () => {
+  it('reaches open positions from above', () => {
+    expect(canReach(new Grid(10, 10), flatI, 3, 3, 0)).toBe(true);
+  });
+
+  it('reaches under an overhang through a side opening', () => {
+    expect(canReach(cave(), alongYI, 4, 5, 0)).toBe(true);
+  });
+
+  it('rejects positions the piece is too wide to get into', () => {
+    expect(canReach(cave(), flatI, 4, 5, 0)).toBe(false);
+  });
+
+  it('rejects a sealed cavity', () => {
+    const g = cave();
+    for (let y = 0; y < 10; y++) g.set(1, y, 0, 1); // wall off the cave mouth
+    for (let y = 0; y < 10; y++) g.set(1, y, 1, 1);
+    expect(canReach(g, alongYI, 4, 5, 0)).toBe(false);
+  });
+
+  it('rejects blocked or out-of-bounds positions', () => {
+    const g = cave();
+    expect(canReach(g, flatI, 4, 5, 1)).toBe(false);
+    expect(canReach(g, flatI, 7, 0, 0)).toBe(false);
+    expect(canReach(g, uprightI, 0, 0, 7)).toBe(false);
+  });
+});
+
+describe('slideToward', () => {
+  it('moves straight to a reachable target in the layer', () => {
+    expect(slideToward(cave(), alongYI, [0, 5], 0, [5, 5])).toEqual([5, 5]);
+  });
+
+  it('stops at the closest reachable spot when walled off', () => {
+    const g = new Grid(10, 10);
+    for (let y = 0; y < 10; y++) g.set(5, y, 0, 1); // wall at x=5
+    // Flat I (4 long) can reach x=0..1 left of the wall; target is past it.
+    expect(slideToward(g, flatI, [0, 3], 0, [7, 3])).toEqual([1, 3]);
+  });
+
+  it('stays put when the start does not fit', () => {
+    const g = new Grid(10, 10);
+    g.set(0, 3, 0, 1);
+    expect(slideToward(g, flatI, [0, 3], 0, [4, 3])).toEqual([0, 3]);
   });
 });
