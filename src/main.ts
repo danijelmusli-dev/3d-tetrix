@@ -222,7 +222,7 @@ const pieceControls = new PieceControls({
   cancel: () => controller.cancel(),
 });
 createHelp();
-const controlsPanel = new ControlsPanel(() => layout());
+new ControlsPanel();
 
 const settings = new BoardSettings(dims, startGame);
 const hud = new Hud(animator, restart, () => {
@@ -243,7 +243,7 @@ function layout(): void {
   // The controls bar only takes bottom space when laid out as a row (phones).
   const row = getComputedStyle(pieceControls.el).flexDirection === 'row';
   const bottom = h - (row ? pieceControls.el : tray.el).getBoundingClientRect().top;
-  rig.layout(w, h, top, bottom, 0, controlsPanel.coveredWidth);
+  rig.layout(w, h, top, bottom);
 }
 window.addEventListener('resize', layout);
 layout();

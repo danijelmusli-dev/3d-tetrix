@@ -5,15 +5,16 @@ import { loadFlag, saveFlag } from './storage';
 const WIDE_SCREEN = 1000;
 
 /**
- * Docked "Controls" window on the right edge listing every control.
- * Collapses to a small tab; the choice is remembered.
+ * Compact "Controls" window floating on the right edge, listing every
+ * control. It overlays the scene (the board stays centered) and collapses
+ * to a small tab; the choice is remembered.
  */
 export class ControlsPanel {
   readonly el: HTMLElement;
   private readonly tab: HTMLButtonElement;
   private open: boolean;
 
-  constructor(private readonly onToggle: () => void) {
+  constructor() {
     this.open = loadFlag('controlsPanel', window.innerWidth >= WIDE_SCREEN);
 
     this.el = document.createElement('aside');
@@ -46,17 +47,10 @@ export class ControlsPanel {
     this.render();
   }
 
-  /** Width (px) the open panel covers on the right, for camera framing; 0 when hidden. */
-  get coveredWidth(): number {
-    if (!this.open || getComputedStyle(this.el).display === 'none') return 0;
-    return window.innerWidth - this.el.getBoundingClientRect().left;
-  }
-
   private setOpen(open: boolean): void {
     this.open = open;
     saveFlag('controlsPanel', open);
     this.render();
-    this.onToggle();
   }
 
   private render(): void {
