@@ -7,6 +7,8 @@ export interface SceneContext {
   camera: THREE.PerspectiveCamera;
   /** Size the sun's shadow camera to cover a size x height board and its shadows. */
   fitShadows: (size: number, height: number) => void;
+  /** Lights, so the sky can tint them. */
+  lights: { hemi: THREE.HemisphereLight; sun: THREE.DirectionalLight };
 }
 
 /** Renderer, scene, lights and camera. Camera placement is owned by CameraRig. */
@@ -22,7 +24,7 @@ export function createScene(container: HTMLElement): SceneContext {
 
   const camera = new THREE.PerspectiveCamera(CAMERA.fov, 1, 0.1, 500);
 
-  const sun = addLights(scene);
+  const { hemi, sun } = addLights(scene);
 
   const resize = (): void => {
     const { clientWidth: w, clientHeight: h } = container;
@@ -45,13 +47,17 @@ export function createScene(container: HTMLElement): SceneContext {
     s.updateProjectionMatrix();
   };
 
-  return { renderer, scene, camera, fitShadows };
+  return { renderer, scene, camera, fitShadows, lights: { hemi, sun } };
 }
 
 const SUN_DIRECTION = new THREE.Vector3(14, 20, -2).normalize();
 
-function addLights(scene: THREE.Scene): THREE.DirectionalLight {
-  scene.add(new THREE.HemisphereLight(0xffffff, 0x404040, 1.6));
+function addLights(scene: THREE.Scene): {
+  hemi: THREE.HemisphereLight;
+  sun: THREE.DirectionalLight;
+} {
+  const hemi = new THREE.HemisphereLight(0xffffff, 0x404040, 1.6);
+  scene.add(hemi);
 
   const sun = new THREE.DirectionalLight(0xffffff, 1.8);
   sun.castShadow = true;
@@ -61,5 +67,5 @@ function addLights(scene: THREE.Scene): THREE.DirectionalLight {
   sun.shadow.bias = -0.0005;
   sun.shadow.camera.near = 1;
   scene.add(sun);
-  return sun;
+  return { hemi, sun };
 }

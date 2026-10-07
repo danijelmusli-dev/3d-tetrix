@@ -20,6 +20,7 @@ import type { Animator } from './render/animator';
 import type { BoardSpin } from './render/boardSpin';
 import type { BoardView } from './render/boardView';
 import type { CameraRig } from './render/cameraRig';
+import type { SkyView } from './render/skyView';
 
 export interface DebugDeps {
   game: Game;
@@ -28,6 +29,7 @@ export interface DebugDeps {
   rig: CameraRig;
   animator: Animator;
   board: BoardView;
+  sky: SkyView;
   /** Screen (client px) position of grid cell center (x, y, z). */
   cellToScreen: (x: number, y: number, z: number) => [number, number];
   /** Redraw the board and refit the camera after grid changes. */
@@ -50,6 +52,8 @@ export interface DebugApi {
   report(): Record<string, unknown>;
   /** Place a tray piece through the controller's real onPlaced (animation) path. */
   play(slot: number, orientation: number, x: number, y: number): PlaceResult | null;
+  /** Jump the sky as if the score were `score`. */
+  setSky(score: number): string;
   /** Simulate holding / releasing Shift (free move). */
   free(on: boolean): void;
   raise(dz: 1 | -1): void;
@@ -72,6 +76,7 @@ export function installDebug({
   cellToScreen,
   animator,
   board,
+  sky,
 }: DebugDeps): void {
   const slow = Number(new URLSearchParams(location.hash.slice(1)).get('slow'));
   if (slow > 0) animator.timeScale = 1 / slow;
@@ -129,6 +134,10 @@ export function installDebug({
     },
     cellToScreen,
     refresh,
+    setSky(score) {
+      sky.setScore(score);
+      return sky.themeName;
+    },
     play(slot, orientation, x, y) {
       return controller.debugPlace(slot, orientation, x, y);
     },

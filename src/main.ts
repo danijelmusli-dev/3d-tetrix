@@ -11,6 +11,7 @@ import { GapsView } from './render/gapsView';
 import { GhostView } from './render/ghostView';
 import { animatePlacement } from './render/placeAnimation';
 import { createScene } from './render/scene';
+import { SkyView } from './render/skyView';
 import { createPieceThumbnails } from './render/thumbnails';
 import { BoardSettings } from './ui/boardSettings';
 import { ViewControls } from './ui/controls';
@@ -30,7 +31,7 @@ import { TrayView } from './ui/trayView';
 const container = document.getElementById('app');
 if (!container) throw new Error('#app container missing');
 
-const { renderer, scene, camera, fitShadows } = createScene(container);
+const { renderer, scene, camera, fitShadows, lights } = createScene(container);
 const animator = new Animator();
 const hashParams = new URLSearchParams(location.hash.slice(1));
 const debugSeed = import.meta.env.DEV ? Number(hashParams.get('seed')) || undefined : undefined;
@@ -50,6 +51,7 @@ const rig = new CameraRig(camera, dims.size, dims.height, animator);
 const spin = new BoardSpin(board.group, animator);
 const ghost = new GhostView(board);
 const gaps = new GapsView(board);
+const sky = new SkyView(scene, animator, lights);
 
 /** Redraw board state and let the camera follow the stack height. */
 function refresh(): void {
@@ -81,6 +83,7 @@ const controller = new PieceController({
           const points = step.cleared.length * POINTS_PER_CLEARED_CELL * (i + 1);
           shown += points;
           hud.setScore(shown);
+          announceSky(shown);
           hud.popup(
             `+${points}`,
             i > 0 ? `Combo ×${i + 1}` : step.lines > 1 ? `${step.lines} lines` : 'Line clear',
@@ -93,6 +96,7 @@ const controller = new PieceController({
     } finally {
       refresh();
       hud.setScore(game.score);
+      announceSky(game.score);
       controller.locked = false;
       const newBest = game.score > best;
       if (newBest) {
@@ -190,6 +194,13 @@ function startGame(next: BoardDims): void {
   hud.setScore(0, false);
   hud.hideGameOver();
   settings.setCurrent(dims);
+  sky.reset();
+}
+
+/** Move the sky along with the score; name the new sky when it changes. */
+function announceSky(score: number): void {
+  const theme = sky.setScore(score);
+  if (theme) hud.popup(theme.name, 'New sky');
 }
 
 function restart(): void {
@@ -205,6 +216,7 @@ if (import.meta.env.DEV) {
       rig,
       animator,
       board,
+      sky,
       refresh,
       cellToScreen: (x, y, z) => {
         // Floor of the cell, so a ray through it lands in that cell.
@@ -221,6 +233,7 @@ renderer.setAnimationLoop((now) => {
   // exception here would freeze the screen for good. Log it and keep drawing.
   try {
     animator.update(now);
+    sky.update(now / 1000, renderer.domElement.clientWidth / renderer.domElement.clientHeight);
     controller.update();
     pieceControls.update(controller.holding, controller.isFree);
   } catch (err) {
