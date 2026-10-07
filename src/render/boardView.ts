@@ -3,8 +3,8 @@ import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeom
 import { COLORS, PIECE_COLORS } from '../config';
 import type { Grid } from '../core/grid';
 
-const SLAB_THICKNESS = 0.3;
-const SLAB_MARGIN = 0.4;
+export const SLAB_THICKNESS = 0.3;
+export const SLAB_MARGIN = 0.4;
 
 /** Shared beveled unit cube used by every cube on the board. */
 export const cubeGeometry = new RoundedBoxGeometry(1, 1, 1, 2, 0.025);

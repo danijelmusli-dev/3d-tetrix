@@ -41,6 +41,15 @@ describe('Grid', () => {
     expect(() => new Grid(4, 3, new Uint8Array(5))).toThrow();
   });
 
+  it('reports stack height (highest filled layer + 1)', () => {
+    const g = new Grid(4, 6);
+    expect(g.stackHeight()).toBe(0);
+    g.set(0, 0, 0, 1);
+    expect(g.stackHeight()).toBe(1);
+    g.set(3, 3, 4, 1); // floating cube still counts
+    expect(g.stackHeight()).toBe(5);
+  });
+
   it('lists filled cells', () => {
     const g = new Grid(4, 3);
     g.set(1, 2, 0, 3);

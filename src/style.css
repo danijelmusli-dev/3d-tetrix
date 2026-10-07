@@ -15,3 +15,35 @@ body {
 #app canvas {
   display: block;
 }
+
+.spin-controls {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  display: flex;
+  gap: 8px;
+}
+
+.spin-controls button {
+  width: 48px;
+  height: 48px;
+  border: 0;
+  border-radius: 12px;
+  background: #52646e;
+  color: #e6eef2;
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgb(0 0 0 / 35%);
+  transition:
+    background 120ms,
+    transform 120ms;
+}
+
+.spin-controls button:hover {
+  background: #607682;
+}
+
+.spin-controls button:active {
+  transform: scale(0.94);
+}

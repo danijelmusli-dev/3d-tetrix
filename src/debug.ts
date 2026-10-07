@@ -1,14 +1,20 @@
 /**
  * Dev-only tooling, loaded from main.ts when import.meta.env.DEV is true.
  *
- * Console:  tetrix.place('I', 0, 2, 3)   tetrix.orientations('L')   tetrix.fill()
- * URL hash: #place=I,0,0,0;T,1,4,4       #fill        (runs on load, for screenshots)
+ * Console:  tetrix.place('I', 0, 2, 3)   tetrix.orientations('L')   tetrix.fill(3)   tetrix.spin(1)
+ * URL hash: #place=I,0,0,0;T,1,4,4   #fill=3   #spin=1   (runs on load, for screenshots)
  */
 import type { Game, PlaceResult } from './core/game';
-import { Grid } from './core/grid';
 import { getOrientations } from './core/orientations';
 import { PIECE_IDS, type PieceId } from './core/pieces';
-import type { BoardView } from './render/boardView';
+import type { BoardSpin } from './render/boardSpin';
+
+export interface DebugDeps {
+  game: Game;
+  spin: BoardSpin;
+  /** Redraw the board and refit the camera after grid changes. */
+  refresh: () => void;
+}
 
 export interface DebugApi {
   game: Game;
@@ -16,6 +22,7 @@ export interface DebugApi {
   orientations(pieceId: PieceId): string[];
   fill(layers?: number): void;
   clear(): void;
+  spin(dir: 1 | -1): void;
 }
 
 declare global {
@@ -24,12 +31,12 @@ declare global {
   }
 }
 
-export function installDebug(game: Game, board: BoardView): void {
+export function installDebug({ game, spin, refresh }: DebugDeps): void {
   const api: DebugApi = {
     game,
     place(pieceId, orientation = 0, x = 0, y = 0) {
       const res = game.placeFree(pieceId, orientation, x, y);
-      board.sync(game.grid);
+      refresh();
       if (!res) console.warn(`Cannot place ${pieceId}#${orientation} at (${x}, ${y})`);
       return res;
     },
@@ -42,11 +49,14 @@ export function installDebug(game: Game, board: BoardView): void {
       for (let z = 0; z < layers; z++)
         for (let y = 0; y < size; y++)
           for (let x = 0; x < size; x++) game.grid.set(x, y, z, ((x + y + z) % 7) + 1);
-      board.sync(game.grid);
+      refresh();
     },
     clear() {
-      game.grid.cells.set(new Grid(game.grid.size, game.grid.height).cells);
-      board.sync(game.grid);
+      game.grid.cells.fill(0);
+      refresh();
+    },
+    spin(dir) {
+      spin.turn(dir);
     },
   };
   window.tetrix = api;
@@ -63,6 +73,8 @@ function runHashScript(api: DebugApi): void {
     if (!PIECE_IDS.includes(id as PieceId)) continue;
     api.place(id as PieceId, Number(o), Number(x), Number(y));
   }
+  const turns = Number(params.get('spin') ?? 0);
+  for (let i = 0; i < Math.abs(turns); i++) api.spin(turns > 0 ? 1 : -1);
 }
 
 function showFps(): void {

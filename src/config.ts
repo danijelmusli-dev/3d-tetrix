@@ -28,6 +28,12 @@ export const CAMERA = {
   fov: 35,
   elevationDeg: 36,
   azimuthDeg: -40,
-  /** Fraction of the viewport kept free around the board volume. */
+  /** Fraction of the viewport kept free around the framed volume. */
   margin: 0.06,
+  /** Layers framed above the tallest stack (an upright I is 4 tall). */
+  headroom: 4,
+  /** Fewest layers ever framed, so an empty board is not zoomed in too far. */
+  minLayers: 4,
+  zoomMs: 600,
+  spinMs: 250,
 } as const;

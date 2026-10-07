@@ -38,6 +38,15 @@ export class Grid {
     return this.get(x, y, z) === 0;
   }
 
+  /** Highest filled layer + 1 (0 for an empty board). */
+  stackHeight(): number {
+    const layer = this.size * this.size;
+    for (let z = this.height - 1; z >= 0; z--) {
+      if (this.cells.subarray(z * layer, (z + 1) * layer).some((v) => v !== 0)) return z + 1;
+    }
+    return 0;
+  }
+
   clone(): Grid {
     return new Grid(this.size, this.height, this.cells.slice());
   }
