@@ -18,9 +18,6 @@ export const COLORS = {
   background: 0x3a3a3a,
   slab: 0x52646e,
   cellLines: 0x6d808b,
-  floorGrid: 0x555555,
-  axisX: 0x9c3b3b,
-  axisY: 0x6c9a2e,
 } as const;
 
 /** Fixed camera: 3/4 view from a corner, matching the reference image. */
