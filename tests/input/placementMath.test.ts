@@ -5,6 +5,7 @@ import {
   gridAxisFor,
   initialOrientation,
   rotateForView,
+  stepFor,
 } from '../../src/input/placementMath';
 
 describe('anchorFor', () => {
@@ -76,5 +77,21 @@ describe('rotateForView', () => {
         const there = rotateForView('J', 7, kind, q, 1);
         expect(rotateForView('J', there, kind, q, -1)).toBe(7);
       }
+  });
+});
+
+describe('stepFor', () => {
+  it('maps screen directions to grid steps at quarter 0', () => {
+    expect(stepFor(0, 'right')).toEqual([1, 0]);
+    expect(stepFor(0, 'left')).toEqual([-1, 0]);
+    expect(stepFor(0, 'toward')).toEqual([0, 1]);
+    expect(stepFor(0, 'away')).toEqual([0, -1]);
+  });
+
+  it('follows the board rotation', () => {
+    expect(stepFor(1, 'right')).toEqual([0, 1]);
+    expect(stepFor(1, 'toward')).toEqual([-1, 0]);
+    expect(stepFor(2, 'right')).toEqual([-1, 0]);
+    expect(stepFor(3, 'away')).toEqual([-1, 0]);
   });
 });

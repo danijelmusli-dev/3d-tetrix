@@ -7,12 +7,13 @@ import { Animator } from './render/animator';
 import { BoardSpin } from './render/boardSpin';
 import { BoardView } from './render/boardView';
 import { CameraRig } from './render/cameraRig';
+import { GapsView } from './render/gapsView';
 import { GhostView } from './render/ghostView';
 import { animatePlacement } from './render/placeAnimation';
 import { createScene } from './render/scene';
 import { createPieceThumbnails } from './render/thumbnails';
 import { BoardSettings } from './ui/boardSettings';
-import { createSpinButtons } from './ui/controls';
+import { ViewControls } from './ui/controls';
 import { createHelp } from './ui/help';
 import { Hud } from './ui/hud';
 import { PieceControls } from './ui/pieceControls';
@@ -48,10 +49,12 @@ fitShadows(dims.size, dims.height);
 const rig = new CameraRig(camera, dims.size, dims.height, animator);
 const spin = new BoardSpin(board.group, animator);
 const ghost = new GhostView(board);
+const gaps = new GapsView(board);
 
 /** Redraw board state and let the camera follow the stack height. */
 function refresh(): void {
   board.sync(game.grid);
+  gaps.update(game.grid);
   rig.setStackHeight(game.grid.stackHeight());
 }
 refresh();
@@ -113,11 +116,34 @@ bindKeys({
   w: () => controller.raise(1),
   s: () => controller.raise(-1),
   escape: () => controller.cancel(),
+  // Keyboard steps for the held piece (enter slide mode), relative to the screen.
+  a: () => controller.step('left'),
+  d: () => controller.step('right'),
+  z: () => controller.step('away'),
+  c: () => controller.step('toward'),
+  arrowleft: () => controller.step('left'),
+  arrowright: () => controller.step('right'),
+  arrowup: () => controller.step('away'),
+  arrowdown: () => controller.step('toward'),
+  ' ': () => toggleTopView(),
+  x: () => toggleXray(),
 });
-createSpinButtons(
-  () => spin.turn(1),
-  () => spin.turn(-1),
-);
+const viewControls = new ViewControls({
+  turnLeft: () => spin.turn(1),
+  turnRight: () => spin.turn(-1),
+  toggleTopView: () => toggleTopView(),
+  toggleXray: () => toggleXray(),
+});
+
+function toggleTopView(): void {
+  rig.toggleTopView();
+  viewControls.update(rig.topView, gaps.visible);
+}
+
+function toggleXray(): void {
+  gaps.toggle();
+  viewControls.update(rig.topView, gaps.visible);
+}
 
 const pieceControls = new PieceControls({
   rotate: (kind) => controller.rotate(kind, 1),

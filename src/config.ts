@@ -39,6 +39,9 @@ export const CAMERA = {
   minLayers: 4,
   zoomMs: 600,
   spinMs: 250,
+  /** Bird's-eye view (Space): almost straight down; exactly 90° would make lookAt degenerate. */
+  topElevationDeg: 88,
+  tiltMs: 450,
 } as const;
 
 /** Placement / clear animation timings (ms). */

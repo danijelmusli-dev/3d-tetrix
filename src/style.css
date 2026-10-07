@@ -24,6 +24,40 @@ body {
   gap: 8px;
 }
 
+/* A control button with its key hint beside it (not inside the button). */
+.ctl {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ctl[hidden] {
+  display: none;
+}
+
+/* View buttons sit in a row: hint above each button. */
+.spin-controls .ctl {
+  flex-direction: column-reverse;
+}
+
+.key-hint {
+  min-width: 14px;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: rgb(30 36 40 / 60%);
+  color: #9fb3bf;
+  font:
+    600 11px/1.4 ui-monospace,
+    monospace;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.spin-controls button[aria-pressed='true'] {
+  background: #d9a441;
+  color: #1e2428;
+}
+
 .spin-controls button {
   width: 48px;
   height: 48px;
@@ -290,10 +324,6 @@ body {
   cursor: pointer;
 }
 
-.piece-controls button[hidden] {
-  display: none;
-}
-
 .piece-controls button:hover {
   background: #607682;
 }
@@ -414,8 +444,9 @@ button:focus-visible {
     font-size: 18px;
   }
 
+  /* Below the score panel, in the empty headroom above the board. */
   .spin-controls {
-    top: 60px;
+    top: 92px;
     right: 10px;
     bottom: auto;
   }
@@ -513,5 +544,12 @@ button:focus-visible {
     right: 58px;
     height: 36px;
     padding: 0 10px;
+  }
+}
+
+/* Touch screens have no keyboard: drop the key hints. */
+@media (hover: none) {
+  .key-hint {
+    display: none;
   }
 }

@@ -6,6 +6,9 @@ import { SLAB_MARGIN, SLAB_THICKNESS } from './boardView';
 /**
  * Fixed-angle camera that zooms with the stack: it frames the board footprint
  * up to `tallest stack + headroom` layers, easing in/out as that changes.
+ * Space toggles a bird's-eye view: elevation eases to almost straight down
+ * and azimuth to 0 so the board reads square. Screen-right stays nearest
+ * world +X and toward-viewer nearest +Z, so key directions keep matching.
  */
 export class CameraRig {
   private visibleLayers: number;
@@ -14,7 +17,11 @@ export class CameraRig {
   /** NDC heights (0..2) reserved at the top / bottom of the viewport for UI. */
   private topInset = 0;
   private bottomInset = 0;
-  private readonly dir: THREE.Vector3;
+  private elevationDeg: number = CAMERA.elevationDeg;
+  /** Tallest stack, used to frame tightly from above. */
+  private stack = 0;
+  private top = false;
+  private tiltTween?: TweenHandle;
 
   constructor(
     private readonly camera: THREE.PerspectiveCamera,
@@ -22,13 +29,6 @@ export class CameraRig {
     private maxLayers: number,
     private readonly animator: Animator,
   ) {
-    const elev = THREE.MathUtils.degToRad(CAMERA.elevationDeg);
-    const azim = THREE.MathUtils.degToRad(CAMERA.azimuthDeg);
-    this.dir = new THREE.Vector3(
-      Math.cos(elev) * Math.sin(azim),
-      Math.sin(elev),
-      Math.cos(elev) * Math.cos(azim),
-    );
     this.goal = this.visibleLayers = this.layersFor(0);
     this.apply();
   }
@@ -38,11 +38,31 @@ export class CameraRig {
     this.tween?.cancel();
     this.size = size;
     this.maxLayers = maxLayers;
+    this.stack = 0;
     this.goal = this.visibleLayers = this.layersFor(0);
     this.apply();
   }
 
+  get topView(): boolean {
+    return this.top;
+  }
+
+  toggleTopView(): void {
+    this.top = !this.top;
+    this.tiltTween?.cancel();
+    this.tiltTween = this.animator.tween({
+      from: this.elevationDeg,
+      to: this.top ? CAMERA.topElevationDeg : CAMERA.elevationDeg,
+      duration: CAMERA.tiltMs,
+      onUpdate: (v) => {
+        this.elevationDeg = v;
+        this.apply();
+      },
+    });
+  }
+
   setStackHeight(stack: number): void {
+    this.stack = stack;
     const target = this.layersFor(stack);
     if (target === this.goal) return;
     this.goal = target;
@@ -83,9 +103,20 @@ export class CameraRig {
     return THREE.MathUtils.clamp(stack + CAMERA.headroom, CAMERA.minLayers, this.maxLayers);
   }
 
-  /** Move along the fixed view direction until the framed box just fits. */
+  /** Move along the view direction until the framed box just fits. */
   private apply(): void {
-    const h = this.visibleLayers;
+    // 0 at the reference angle, 1 in full bird's-eye view.
+    const topness =
+      (this.elevationDeg - CAMERA.elevationDeg) / (CAMERA.topElevationDeg - CAMERA.elevationDeg);
+    const elev = THREE.MathUtils.degToRad(this.elevationDeg);
+    const azim = THREE.MathUtils.degToRad(CAMERA.azimuthDeg * (1 - topness));
+    const dir = new THREE.Vector3(
+      Math.cos(elev) * Math.sin(azim),
+      Math.sin(elev),
+      Math.cos(elev) * Math.cos(azim),
+    );
+    // From above, headroom only inflates the frame (perspective), so frame the real stack.
+    const h = THREE.MathUtils.lerp(this.visibleLayers, Math.max(this.stack, 1), topness);
     const half = this.size / 2 + SLAB_MARGIN;
     const target = new THREE.Vector3(0, h / 2, 0);
     const corners: THREE.Vector3[] = [];
@@ -95,7 +126,7 @@ export class CameraRig {
 
     const limit = 1 - CAMERA.margin;
     const place = (distance: number): void => {
-      this.camera.position.copy(target).addScaledVector(this.dir, distance);
+      this.camera.position.copy(target).addScaledVector(dir, distance);
       this.camera.lookAt(target);
       this.camera.updateMatrixWorld();
     };

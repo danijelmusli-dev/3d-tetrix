@@ -7,7 +7,14 @@ import type { BoardSpin } from '../render/boardSpin';
 import type { BoardView } from '../render/boardView';
 import type { GhostView } from '../render/ghostView';
 import type { TrayView } from '../ui/trayView';
-import { anchorFor, initialOrientation, rotateForView, type RotationKind } from './placementMath';
+import {
+  anchorFor,
+  initialOrientation,
+  rotateForView,
+  stepFor,
+  type RotationKind,
+  type ScreenDirection,
+} from './placementMath';
 
 /** Pointer travel (px) that turns a press into a drag. */
 const DRAG_THRESHOLD = 6;
@@ -60,6 +67,8 @@ export class PieceController {
   private free: FreePosition | null = null;
   /** Last legal drop spot, so free move can be toggled from a button (no hover on touch). */
   private lastTarget: Target | null = null;
+  /** After a keyboard step, ignore the mouse until it actually moves again. */
+  private keyStepped = false;
   /** True while a placement animation plays: no ghost, no placing. */
   locked = false;
   private readonly raycaster = new THREE.Raycaster();
@@ -124,6 +133,7 @@ export class PieceController {
   setFree(on: boolean): void {
     if (!on) {
       this.free = null;
+      this.keyStepped = false;
       return;
     }
     if (this.free || !this.held) return;
@@ -131,6 +141,24 @@ export class PieceController {
     const target = aimed?.z != null ? aimed : this.lastTarget;
     if (target?.z == null) return; // only lock onto a legal landing spot
     this.free = { x: target.x, y: target.y, z: target.z };
+  }
+
+  /**
+   * Keyboard step (A/D/Z/C, arrows): move the held piece one cell in a screen
+   * direction within its layer, never into cubes. Enters free move if needed.
+   */
+  step(direction: ScreenDirection): void {
+    if (!this.held) return;
+    this.setFree(true);
+    const { free } = this;
+    const cells = this.heldCells();
+    if (!free || !cells) return;
+    const [dx, dy] = stepFor(this.deps.spin.quarter, direction);
+    if (fits(this.deps.game.grid, cells, free.x + dx, free.y + dy, free.z)) {
+      free.x += dx;
+      free.y += dy;
+    }
+    this.keyStepped = true;
   }
 
   /** Free move: change the carried layer by `dz` if the piece fits there. */
@@ -207,7 +235,7 @@ export class PieceController {
     const { game } = this.deps;
     const id = game.tray.pieces[this.held!.slot]!;
     const o = getOrientations(id)[this.held!.orientation]!;
-    const column = this.aimedColumn();
+    const column = this.keyStepped ? null : this.aimedColumn();
     const anchor = column && anchorFor(column, o.extent, game.grid.size);
     if (anchor)
       [free.x, free.y] = slideToward(game.grid, o.cells, [free.x, free.y], free.z, anchor);
@@ -233,6 +261,7 @@ export class PieceController {
 
   private onMove(e: PointerEvent): void {
     this.pointer = { x: e.clientX, y: e.clientY, touch: e.pointerType === 'touch' };
+    this.keyStepped = false;
     if (this.pressAt && !this.dragged) {
       const dist = Math.hypot(e.clientX - this.pressAt.x, e.clientY - this.pressAt.y);
       if (dist > DRAG_THRESHOLD) this.dragged = true;

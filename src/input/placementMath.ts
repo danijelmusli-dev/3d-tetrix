@@ -54,6 +54,16 @@ export function gridAxisFor(
   return { axis, sign };
 }
 
+export type ScreenDirection = 'left' | 'right' | 'away' | 'toward';
+
+/** One-cell grid step (dx, dy) for a screen direction at the current board quarter. */
+export function stepFor(quarter: number, direction: ScreenDirection): [number, number] {
+  const horizontal = direction === 'left' || direction === 'right';
+  const { axis, sign } = gridAxisFor(quarter, horizontal ? 'right' : 'toward');
+  const s = direction === 'left' || direction === 'away' ? -sign : sign;
+  return axis === 'x' ? [s, 0] : [0, s];
+}
+
 /**
  * Orientation to start with when a piece is picked up, so it appears on the
  * rotated board the same way its (unrotated) thumbnail shows it.
