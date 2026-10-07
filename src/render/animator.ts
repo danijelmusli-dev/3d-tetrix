@@ -20,7 +20,8 @@ export interface TweenHandle {
 }
 
 interface Active extends Required<TweenOptions> {
-  start: number;
+  /** Set on the first update so start and progress use the same clock. */
+  start: number | undefined;
   finish: () => void;
 }
 
@@ -32,7 +33,11 @@ export class Animator {
     return this.active.size > 0;
   }
 
-  tween(options: TweenOptions, now = performance.now()): TweenHandle {
+  /**
+   * Start a tween. `now` pins the start time (tests); by default the tween
+   * starts at the next `update`, using the render loop's own timestamps.
+   */
+  tween(options: TweenOptions, now?: number): TweenHandle {
     let finish!: () => void;
     const done = new Promise<void>((resolve) => (finish = resolve));
     const entry: Active = { ease: easeInOutCubic, ...options, start: now, finish };
@@ -47,7 +52,9 @@ export class Animator {
 
   update(now: number): void {
     for (const t of this.active) {
-      const progress = t.duration > 0 ? Math.min((now - t.start) / t.duration, 1) : 1;
+      t.start ??= now;
+      const elapsed = Math.max(now - t.start, 0);
+      const progress = t.duration > 0 ? Math.min(elapsed / t.duration, 1) : 1;
       t.onUpdate(t.from + (t.to - t.from) * t.ease(progress));
       if (progress === 1) {
         this.active.delete(t);

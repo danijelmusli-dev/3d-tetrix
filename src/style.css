@@ -47,3 +47,69 @@ body {
 .spin-controls button:active {
   transform: scale(0.94);
 }
+
+body {
+  touch-action: none;
+  user-select: none;
+}
+
+.tray {
+  position: fixed;
+  left: 50%;
+  bottom: 16px;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 12px;
+  padding: 10px;
+  border-radius: 18px;
+  background: rgb(30 36 40 / 55%);
+  backdrop-filter: blur(6px);
+}
+
+.tray-slot {
+  width: 112px;
+  height: 80px;
+  padding: 4px;
+  border: 2px solid transparent;
+  border-radius: 12px;
+  background: rgb(82 100 110 / 45%);
+  cursor: grab;
+  transition:
+    transform 120ms,
+    border-color 120ms,
+    opacity 120ms;
+}
+
+.tray-slot img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+.tray-slot:hover:not(:disabled) {
+  transform: translateY(-2px);
+}
+
+.tray-slot.held {
+  border-color: #e6eef2;
+  opacity: 0.55;
+  cursor: grabbing;
+}
+
+.tray-slot:disabled {
+  cursor: default;
+  opacity: 0.25;
+}
+
+.game-over {
+  position: fixed;
+  top: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 12px 20px;
+  border-radius: 12px;
+  background: rgb(30 36 40 / 85%);
+  color: #e6eef2;
+  font-size: 18px;
+}

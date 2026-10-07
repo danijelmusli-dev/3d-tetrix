@@ -9,6 +9,16 @@ export const SLAB_MARGIN = 0.4;
 /** Shared beveled unit cube used by every cube on the board. */
 export const cubeGeometry = new RoundedBoxGeometry(1, 1, 1, 2, 0.025);
 
+/** Snap a (possibly beveled, diagonal) normal to its strongest axis. */
+function dominantAxis(n: THREE.Vector3): THREE.Vector3 {
+  const ax = Math.abs(n.x);
+  const ay = Math.abs(n.y);
+  const az = Math.abs(n.z);
+  if (ay >= ax && ay >= az) return new THREE.Vector3(0, Math.sign(n.y), 0);
+  if (ax >= az) return new THREE.Vector3(Math.sign(n.x), 0, 0);
+  return new THREE.Vector3(0, 0, Math.sign(n.z));
+}
+
 export function pieceColor(colorId: number): THREE.Color {
   return new THREE.Color(PIECE_COLORS[colorId - 1] ?? 0xffffff);
 }
@@ -51,6 +61,39 @@ export class BoardView {
     this.cubes.count = i;
     this.cubes.instanceMatrix.needsUpdate = true;
     if (this.cubes.instanceColor) this.cubes.instanceColor.needsUpdate = true;
+    // Raycasting tests against the bounding sphere, so keep it current.
+    this.cubes.computeBoundingSphere();
+  }
+
+  /**
+   * Grid column (x, y) under a ray. Hitting a cube's top picks its column;
+   * hitting a side picks the neighboring column on that side. Otherwise the
+   * ray is intersected with the board's top plane. May be off the board.
+   */
+  pickColumn(raycaster: THREE.Raycaster): [number, number] | null {
+    const half = this.size / 2;
+    const toCell = (p: THREE.Vector3): [number, number] => [
+      Math.floor(p.x + half),
+      Math.floor(p.z + half),
+    ];
+
+    const hit = raycaster.intersectObject(this.cubes, false)[0];
+    if (hit?.face) {
+      const local = this.group.worldToLocal(hit.point.clone());
+      const normal = dominantAxis(hit.face.normal);
+      const neighbor = toCell(local.clone().addScaledVector(normal, 0.5));
+      const onBoard = neighbor.every((v) => v >= 0 && v < this.size);
+      // Outer walls have no neighbor on the board: aim at the hit cube's own column.
+      return onBoard ? neighbor : toCell(local.addScaledVector(normal, -0.5));
+    }
+
+    const inverse = this.group.matrixWorld.clone().invert();
+    const ray = raycaster.ray.clone().applyMatrix4(inverse);
+    const point = ray.intersectPlane(
+      new THREE.Plane(new THREE.Vector3(0, 1, 0), 0),
+      new THREE.Vector3(),
+    );
+    return point ? toCell(point) : null;
   }
 
   private createCubes(): THREE.InstancedMesh {

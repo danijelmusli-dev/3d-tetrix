@@ -7,8 +7,11 @@ function setup() {
   const group = { rotation: { y: 0 } } as unknown as THREE.Object3D;
   const animator = new Animator();
   const spin = new BoardSpin(group, animator);
+  // First update stamps the start of new tweens; the second finishes them.
   const settle = async (): Promise<void> => {
-    animator.update(performance.now() + 10_000);
+    const now = performance.now();
+    animator.update(now);
+    animator.update(now + 10_000);
     await Promise.resolve();
   };
   return { group, animator, spin, settle };

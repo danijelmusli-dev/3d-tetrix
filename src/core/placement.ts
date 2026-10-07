@@ -11,11 +11,11 @@ export function fits(grid: Grid, cells: readonly Vec3[], x: number, y: number, z
 }
 
 /**
- * Drop a piece straight down from above the board at footprint offset (x, y).
- * Returns the z where it comes to rest, or null if the footprint leaves the
- * board or the resting piece would stick out above the height cap.
+ * Drop a piece straight down from above the board at footprint offset (x, y)
+ * and return the z where it comes to rest, ignoring the height cap (the piece
+ * may stick out above it). Null only if the footprint leaves the board.
  */
-export function dropZ(grid: Grid, cells: readonly Vec3[], x: number, y: number): number | null {
+export function restingZ(grid: Grid, cells: readonly Vec3[], x: number, y: number): number | null {
   const onBoard = cells.every(
     ([dx, dy]) => x + dx >= 0 && y + dy >= 0 && x + dx < grid.size && y + dy < grid.size,
   );
@@ -27,7 +27,16 @@ export function dropZ(grid: Grid, cells: readonly Vec3[], x: number, y: number):
 
   let z = grid.height;
   while (z > 0 && free(z - 1)) z--;
+  return z;
+}
 
+/**
+ * Like `restingZ`, but null when the resting piece would stick out above the
+ * height cap — i.e. the landing z of a legal drop, or null.
+ */
+export function dropZ(grid: Grid, cells: readonly Vec3[], x: number, y: number): number | null {
+  const z = restingZ(grid, cells, x, y);
+  if (z === null) return null;
   const top = z + Math.max(...cells.map(([, , dz]) => dz));
   return top < grid.height ? z : null;
 }

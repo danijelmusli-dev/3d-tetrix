@@ -42,6 +42,23 @@ describe('Animator', () => {
     await expect(t.done).resolves.toBeUndefined();
   });
 
+  it('starts on the first update when no start time is given', () => {
+    const anim = new Animator();
+    const seen: number[] = [];
+    anim.tween({ from: 0, to: 10, duration: 100, ease: linear, onUpdate: (v) => seen.push(v) });
+    anim.update(5000); // render-loop clock, unrelated to performance.now()
+    anim.update(5050);
+    expect(seen).toEqual([0, 5]);
+  });
+
+  it('never runs backwards when update time precedes the start', () => {
+    const anim = new Animator();
+    const seen: number[] = [];
+    anim.tween({ from: 4, to: 5, duration: 100, onUpdate: (v) => seen.push(v) }, 1000);
+    anim.update(900);
+    expect(seen).toEqual([4]);
+  });
+
   it('zero duration jumps straight to the end', () => {
     const anim = new Animator();
     const seen: number[] = [];

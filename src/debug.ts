@@ -3,15 +3,21 @@
  *
  * Console:  tetrix.place('I', 0, 2, 3)   tetrix.orientations('L')   tetrix.fill(3)   tetrix.spin(1)
  * URL hash: #place=I,0,0,0;T,1,4,4   #fill=3   #spin=1   (runs on load, for screenshots)
+ *           #seed=7&hold=0&aim=600,400&rot=spin,tip&drop   (scripted tray drag)
  */
 import type { Game, PlaceResult } from './core/game';
 import { getOrientations } from './core/orientations';
 import { PIECE_IDS, type PieceId } from './core/pieces';
+import type { PieceController } from './input/pieceController';
+import type { RotationKind } from './input/placementMath';
 import type { BoardSpin } from './render/boardSpin';
+import type { CameraRig } from './render/cameraRig';
 
 export interface DebugDeps {
   game: Game;
   spin: BoardSpin;
+  controller: PieceController;
+  rig: CameraRig;
   /** Redraw the board and refit the camera after grid changes. */
   refresh: () => void;
 }
@@ -23,6 +29,13 @@ export interface DebugApi {
   fill(layers?: number): void;
   clear(): void;
   spin(dir: 1 | -1): void;
+  /** Simulate pressing tray `slot` at screen point (x, y). */
+  hold(slot: number, x?: number, y?: number): void;
+  aim(x: number, y: number): void;
+  rotate(kind: RotationKind, dir?: 1 | -1): void;
+  /** Release the pointer at its last position (places if valid). */
+  drop(): void;
+  report(): Record<string, unknown>;
 }
 
 declare global {
@@ -31,7 +44,12 @@ declare global {
   }
 }
 
-export function installDebug({ game, spin, refresh }: DebugDeps): void {
+export function installDebug({ game, spin, controller, rig, refresh }: DebugDeps): void {
+  let last = { clientX: 0, clientY: 0 };
+  const pointer = (type: string, x: number, y: number): void => {
+    last = { clientX: x, clientY: y };
+    window.dispatchEvent(new PointerEvent(type, { ...last, button: 0 }));
+  };
   const api: DebugApi = {
     game,
     place(pieceId, orientation = 0, x = 0, y = 0) {
@@ -58,6 +76,29 @@ export function installDebug({ game, spin, refresh }: DebugDeps): void {
     spin(dir) {
       spin.turn(dir);
     },
+    hold(slot, x = 0, y = 0) {
+      last = { clientX: x, clientY: y };
+      controller.pick(slot, new PointerEvent('pointerdown', { ...last, button: 0 }));
+    },
+    aim(x, y) {
+      pointer('pointermove', x, y);
+    },
+    rotate(kind, dir = 1) {
+      controller.rotate(kind, dir);
+    },
+    drop() {
+      pointer('pointerup', last.clientX, last.clientY);
+    },
+    report() {
+      return {
+        quarter: spin.quarter,
+        stack: game.grid.stackHeight(),
+        score: game.score,
+        tray: game.tray.pieces,
+        controller: controller.debugState(),
+        camera: rig.debugState(),
+      };
+    },
   };
   window.tetrix = api;
   runHashScript(api);
@@ -75,6 +116,25 @@ function runHashScript(api: DebugApi): void {
   }
   const turns = Number(params.get('spin') ?? 0);
   for (let i = 0; i < Math.abs(turns); i++) api.spin(turns > 0 ? 1 : -1);
+
+  if (params.has('hold')) {
+    const [x = 0, y = 0] = (params.get('aim') ?? '').split(',').map(Number);
+    api.hold(Number(params.get('hold')), x + 20, y + 20);
+    api.aim(x, y); // moving past the drag threshold makes it a drag
+    for (const kind of (params.get('rot') ?? '').split(',').filter(Boolean))
+      api.rotate(kind as RotationKind);
+    // Let the board spin settle before releasing.
+    if (params.has('drop')) setTimeout(() => api.drop(), 800);
+  }
+
+  // #report: dump state into the DOM for headless `--dump-dom` checks.
+  if (params.has('report'))
+    setTimeout(() => {
+      const pre = document.createElement('pre');
+      pre.id = 'report';
+      pre.textContent = JSON.stringify(api.report());
+      document.body.appendChild(pre);
+    }, 1500);
 }
 
 function showFps(): void {

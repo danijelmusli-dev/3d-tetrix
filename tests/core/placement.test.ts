@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { Grid, type Vec3 } from '../../src/core/grid';
-import { dropZ, fits } from '../../src/core/placement';
+import { dropZ, fits, restingZ } from '../../src/core/placement';
 
 const flatI: Vec3[] = [
   [0, 0, 0],
@@ -39,6 +39,26 @@ describe('fits', () => {
     expect(fits(g, flatI, 7, 0, 0)).toBe(false);
     g.set(2, 0, 0, 1);
     expect(fits(g, flatI, 0, 0, 0)).toBe(false);
+  });
+});
+
+describe('restingZ', () => {
+  it('matches dropZ when the piece fits under the cap', () => {
+    const g = new Grid(10, 10);
+    for (let z = 0; z < 3; z++) g.set(0, 0, z, 1);
+    expect(restingZ(g, uprightI, 0, 0)).toBe(3);
+    expect(dropZ(g, uprightI, 0, 0)).toBe(3);
+  });
+
+  it('still reports where the piece rests when it pokes above the cap', () => {
+    const g = new Grid(10, 10);
+    for (let z = 0; z < 8; z++) g.set(0, 0, z, 1);
+    expect(dropZ(g, uprightI, 0, 0)).toBeNull();
+    expect(restingZ(g, uprightI, 0, 0)).toBe(8);
+  });
+
+  it('is null only when the footprint leaves the board', () => {
+    expect(restingZ(new Grid(10, 10), flatI, 7, 0)).toBeNull();
   });
 });
 
