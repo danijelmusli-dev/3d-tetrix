@@ -20,6 +20,7 @@ import { createPieceThumbnails } from './render/thumbnails';
 import { AudioControls } from './ui/audioControls';
 import { BoardSettings } from './ui/boardSettings';
 import { ViewControls } from './ui/controls';
+import { ControlsPanel } from './ui/controlsPanel';
 import { createHelp } from './ui/help';
 import { Hud } from './ui/hud';
 import { PieceControls } from './ui/pieceControls';
@@ -221,6 +222,7 @@ const pieceControls = new PieceControls({
   cancel: () => controller.cancel(),
 });
 createHelp();
+const controlsPanel = new ControlsPanel(() => layout());
 
 const settings = new BoardSettings(dims, startGame);
 const hud = new Hud(animator, restart, () => {
@@ -241,7 +243,7 @@ function layout(): void {
   // The controls bar only takes bottom space when laid out as a row (phones).
   const row = getComputedStyle(pieceControls.el).flexDirection === 'row';
   const bottom = h - (row ? pieceControls.el : tray.el).getBoundingClientRect().top;
-  rig.layout(w, h, top, bottom);
+  rig.layout(w, h, top, bottom, 0, controlsPanel.coveredWidth);
 }
 window.addEventListener('resize', layout);
 layout();
