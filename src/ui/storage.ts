@@ -56,6 +56,20 @@ export function saveBest(dims: BoardDims, score: number): void {
   write(bestKey(dims), String(score));
 }
 
+/** On/off settings (music, sound effects); `fallback` when unset or unavailable. */
+export function loadFlag(name: string, fallback: boolean): boolean {
+  try {
+    const value = localStorage.getItem(`tetrix.${name}`);
+    return value === null ? fallback : value === '1';
+  } catch {
+    return fallback;
+  }
+}
+
+export function saveFlag(name: string, on: boolean): void {
+  write(`tetrix.${name}`, on ? '1' : '0');
+}
+
 function write(key: string, value: string): void {
   try {
     localStorage.setItem(key, value);

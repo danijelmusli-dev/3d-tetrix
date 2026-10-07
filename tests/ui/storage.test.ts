@@ -4,8 +4,10 @@ import {
   isValidBoard,
   loadBest,
   loadBoard,
+  loadFlag,
   saveBest,
   saveBoard,
+  saveFlag,
 } from '../../src/ui/storage';
 
 function stubStorage(): Map<string, string> {
@@ -40,6 +42,21 @@ describe('board size storage', () => {
     expect(isValidBoard({ size: 5, height: 10 })).toBe(false);
     expect(isValidBoard({ size: 10, height: 15 })).toBe(false);
     expect(isValidBoard({ size: 7.5, height: 10 })).toBe(false);
+  });
+});
+
+describe('flag storage', () => {
+  it('round-trips on/off and falls back when unset or blocked', () => {
+    stubStorage();
+    expect(loadFlag('music', true)).toBe(true);
+    saveFlag('music', false);
+    expect(loadFlag('music', true)).toBe(false);
+    vi.stubGlobal('localStorage', {
+      getItem: () => {
+        throw new Error('blocked');
+      },
+    });
+    expect(loadFlag('sfx', true)).toBe(true);
   });
 });
 

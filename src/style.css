@@ -553,3 +553,47 @@ button:focus-visible {
     display: none;
   }
 }
+
+.audio-controls {
+  position: fixed;
+  top: 16px;
+  left: 16px;
+  display: flex;
+  gap: 8px;
+}
+
+/* Hint under each audio button. */
+.audio-controls .ctl {
+  flex-direction: column;
+}
+
+.audio-controls button {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border: 0;
+  border-radius: 50%;
+  background: #52646e;
+  color: #e6eef2;
+  font-size: 20px;
+  cursor: pointer;
+  transition: opacity 120ms;
+}
+
+.audio-controls button.off {
+  opacity: 0.4;
+}
+
+@media (max-width: 600px) {
+  .audio-controls {
+    top: 10px;
+    left: 10px;
+    gap: 6px;
+  }
+
+  .audio-controls button {
+    width: 36px;
+    height: 36px;
+  }
+}

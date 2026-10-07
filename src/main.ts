@@ -1,4 +1,8 @@
 import './style.css';
+import { AudioEngine } from './audio/engine';
+import { Music } from './audio/music';
+import { Sfx } from './audio/sfx';
+import { ANIM } from './config';
 import { Game, POINTS_PER_CLEARED_CELL, POINTS_PER_PLACED_CELL } from './core/game';
 import { TRAY_SLOTS } from './core/tray';
 import { bindKeys } from './input/keyboard';
@@ -13,6 +17,7 @@ import { animatePlacement } from './render/placeAnimation';
 import { createScene } from './render/scene';
 import { SkyView } from './render/skyView';
 import { createPieceThumbnails } from './render/thumbnails';
+import { AudioControls } from './ui/audioControls';
 import { BoardSettings } from './ui/boardSettings';
 import { ViewControls } from './ui/controls';
 import { createHelp } from './ui/help';
@@ -22,8 +27,10 @@ import {
   isValidBoard,
   loadBest,
   loadBoard,
+  loadFlag,
   saveBest,
   saveBoard,
+  saveFlag,
   type BoardDims,
 } from './ui/storage';
 import { TrayView } from './ui/trayView';
@@ -53,6 +60,13 @@ const ghost = new GhostView(board);
 const gaps = new GapsView(board);
 const sky = new SkyView(scene, animator, lights);
 
+const audio = new AudioEngine(loadFlag('music', true), loadFlag('sfx', true));
+const sfx = new Sfx(audio);
+const music = new Music(audio);
+audio.onReady = () => {
+  if (audio.isOn('music')) music.start();
+};
+
 /** Redraw board state and let the camera follow the stack height. */
 function refresh(): void {
   board.sync(game.grid);
@@ -72,8 +86,18 @@ const controller = new PieceController({
   tray,
   camera,
   canvas: renderer.domElement,
+  onEvent: (event) => {
+    if (event === 'pick') sfx.pick();
+    else if (event === 'rotate') sfx.rotate();
+    else if (event === 'step') sfx.step();
+    else if (event === 'blocked' || event === 'invalid') sfx.blocked();
+    else if (event === 'slideOn' || event === 'slideOff') sfx.toggle(event === 'slideOn');
+    else if (event === 'cancel') sfx.cancel();
+  },
   onPlaced: async (result) => {
     controller.locked = true;
+    // Thump right as the drop animation lands.
+    sfx.land(result.placed.length, (ANIM.dropMs * 0.8) / 1000);
     // Count the score up alongside the animation: placement first, then each clear step.
     let shown = game.score - result.scoreDelta + result.placed.length * POINTS_PER_PLACED_CELL;
     hud.setScore(shown);
@@ -83,6 +107,7 @@ const controller = new PieceController({
           const points = step.cleared.length * POINTS_PER_CLEARED_CELL * (i + 1);
           shown += points;
           hud.setScore(shown);
+          sfx.clear(i, step.cleared.length);
           announceSky(shown);
           hud.popup(
             `+${points}`,
@@ -104,14 +129,24 @@ const controller = new PieceController({
         saveBest(dims, best);
         hud.setBest(best);
       }
-      if (result.gameOver) hud.showGameOver(game.score, newBest && game.score > startBest);
+      // Fanfare the first time this game beats a previous best.
+      if (startBest > 0 && game.score > startBest && !bestCheered) {
+        bestCheered = true;
+        sfx.newBest();
+      }
+      if (result.gameOver) {
+        sfx.gameOver();
+        hud.showGameOver(game.score, newBest && game.score > startBest);
+      }
     }
   },
 });
 
 bindKeys({
-  q: () => spin.turn(1),
-  e: () => spin.turn(-1),
+  q: () => turnBoard(1),
+  e: () => turnBoard(-1),
+  m: () => toggleMusic(),
+  n: () => toggleSfx(),
   r: () => controller.rotate('spin', 1),
   f: () => controller.rotate('tip', 1),
   t: () => controller.rotate('roll', 1),
@@ -133,20 +168,50 @@ bindKeys({
   x: () => toggleXray(),
 });
 const viewControls = new ViewControls({
-  turnLeft: () => spin.turn(1),
-  turnRight: () => spin.turn(-1),
+  turnLeft: () => turnBoard(1),
+  turnRight: () => turnBoard(-1),
   toggleTopView: () => toggleTopView(),
   toggleXray: () => toggleXray(),
 });
 
+function turnBoard(dir: 1 | -1): void {
+  spin.turn(dir);
+  sfx.turn();
+}
+
 function toggleTopView(): void {
   rig.toggleTopView();
   viewControls.update(rig.topView, gaps.visible);
+  sfx.toggle(rig.topView);
 }
 
 function toggleXray(): void {
   gaps.toggle();
   viewControls.update(rig.topView, gaps.visible);
+  sfx.toggle(gaps.visible);
+}
+
+const audioControls = new AudioControls({
+  toggleMusic: () => toggleMusic(),
+  toggleSfx: () => toggleSfx(),
+});
+audioControls.update(audio.isOn('music'), audio.isOn('sfx'));
+
+function toggleMusic(): void {
+  const on = !audio.isOn('music');
+  audio.setOn('music', on);
+  if (on) music.start();
+  else music.stop();
+  saveFlag('music', on);
+  audioControls.update(audio.isOn('music'), audio.isOn('sfx'));
+}
+
+function toggleSfx(): void {
+  const on = !audio.isOn('sfx');
+  audio.setOn('sfx', on);
+  saveFlag('sfx', on);
+  audioControls.update(audio.isOn('music'), audio.isOn('sfx'));
+  sfx.toggle(on);
 }
 
 const pieceControls = new PieceControls({
@@ -165,6 +230,8 @@ const hud = new Hud(animator, restart, () => {
 let best = loadBest(dims);
 /** Best score when the current game started, to tell whether this game beat it. */
 let startBest = best;
+/** The new-best fanfare plays once per game. */
+let bestCheered = false;
 hud.setBest(best);
 
 /** Fit the camera into the space between the score readout and the piece controls / tray. */
@@ -195,12 +262,17 @@ function startGame(next: BoardDims): void {
   hud.hideGameOver();
   settings.setCurrent(dims);
   sky.reset();
+  music.intensity = 0;
+  bestCheered = false;
 }
 
 /** Move the sky along with the score; name the new sky when it changes. */
 function announceSky(score: number): void {
   const theme = sky.setScore(score);
-  if (theme) hud.popup(theme.name, 'New sky');
+  if (!theme) return;
+  hud.popup(theme.name, 'New sky');
+  sfx.newSky();
+  music.intensity = sky.level;
 }
 
 function restart(): void {
@@ -217,6 +289,8 @@ if (import.meta.env.DEV) {
       animator,
       board,
       sky,
+      audio,
+      music,
       refresh,
       cellToScreen: (x, y, z) => {
         // Floor of the cell, so a ray through it lands in that cell.

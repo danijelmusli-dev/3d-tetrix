@@ -21,6 +21,8 @@ import type { BoardSpin } from './render/boardSpin';
 import type { BoardView } from './render/boardView';
 import type { CameraRig } from './render/cameraRig';
 import type { SkyView } from './render/skyView';
+import type { AudioEngine } from './audio/engine';
+import type { Music } from './audio/music';
 
 export interface DebugDeps {
   game: Game;
@@ -30,6 +32,8 @@ export interface DebugDeps {
   animator: Animator;
   board: BoardView;
   sky: SkyView;
+  audio: AudioEngine;
+  music: Music;
   /** Screen (client px) position of grid cell center (x, y, z). */
   cellToScreen: (x: number, y: number, z: number) => [number, number];
   /** Redraw the board and refit the camera after grid changes. */
@@ -77,6 +81,8 @@ export function installDebug({
   animator,
   board,
   sky,
+  audio,
+  music,
 }: DebugDeps): void {
   const slow = Number(new URLSearchParams(location.hash.slice(1)).get('slow'));
   if (slow > 0) animator.timeScale = 1 / slow;
@@ -150,6 +156,12 @@ export function installDebug({
         controller: controller.debugState(),
         camera: rig.debugState(),
         drawn: board.drawnCount,
+        audio: {
+          ready: audio.ready,
+          music: music.playing,
+          intensity: music.intensity,
+          level: Number(audio.level().toFixed(4)),
+        },
         locked: controller.locked,
       };
     },
@@ -255,7 +267,7 @@ ${err.stack ?? ''}`
 function showFps(): void {
   const el = document.createElement('div');
   el.style.cssText =
-    'position:fixed;top:8px;left:8px;font:12px monospace;color:#9fb3bf;pointer-events:none';
+    'position:fixed;bottom:8px;left:8px;font:12px monospace;color:#9fb3bf;pointer-events:none';
   document.body.appendChild(el);
   let frames = 0;
   let last = performance.now();

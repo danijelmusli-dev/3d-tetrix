@@ -9,6 +9,7 @@ const CONTROLS: [string, string][] = [
   ['Q / E, ↺ ↻', 'Turn the board'],
   ['Space, ⊡', "Bird's-eye view on / off"],
   ['X, ◍', 'Show hidden empty gaps in red'],
+  ['M / N', 'Music / sound effects on or off'],
   ['Esc, right click, ✕', 'Put the piece back'],
 ];
 

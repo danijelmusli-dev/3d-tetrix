@@ -31,7 +31,12 @@ export interface PieceControllerDeps {
   camera: THREE.Camera;
   canvas: HTMLCanvasElement;
   onPlaced: (result: PlaceResult) => void;
+  /** Feedback hooks (sound effects). */
+  onEvent?: (event: PieceEvent) => void;
 }
+
+export type PieceEvent =
+  'pick' | 'rotate' | 'step' | 'blocked' | 'slideOn' | 'slideOff' | 'cancel' | 'invalid';
 
 interface Held {
   slot: number;
@@ -133,6 +138,7 @@ export class PieceController {
   /** Enter (Shift down) or leave (Shift up) free move. */
   setFree(on: boolean): void {
     if (!on) {
+      if (this.free) this.emit('slideOff');
       this.free = null;
       this.keyStepped = false;
       return;
@@ -145,6 +151,7 @@ export class PieceController {
     const target = column && aimTarget(this.deps.game.grid, this.heldOrientation()!, column);
     if (target?.z == null) return; // only lock onto a legal landing spot
     this.free = { x: target.x, y: target.y, z: target.z };
+    this.emit('slideOn');
   }
 
   /**
@@ -161,7 +168,8 @@ export class PieceController {
     if (fits(this.deps.game.grid, cells, free.x + dx, free.y + dy, free.z)) {
       free.x += dx;
       free.y += dy;
-    }
+      this.emit('step');
+    } else this.emit('blocked');
     this.keyStepped = true;
   }
 
@@ -170,7 +178,10 @@ export class PieceController {
     const { free } = this;
     const cells = this.heldCells();
     if (!free || !cells) return;
-    if (fits(this.deps.game.grid, cells, free.x, free.y, free.z + dz)) free.z += dz;
+    if (fits(this.deps.game.grid, cells, free.x, free.y, free.z + dz)) {
+      free.z += dz;
+      this.emit('step');
+    } else this.emit('blocked');
   }
 
   /** Tray slot pressed. Pressing the held slot again puts it back. */
@@ -185,6 +196,7 @@ export class PieceController {
     this.lastColumn = null;
     this.startPress(e);
     this.renderTray();
+    this.emit('pick');
   }
 
   /** Rotate the held piece; returns false if a slide-mode rotation found no room. */
@@ -198,14 +210,20 @@ export class PieceController {
       // reachable spot that fits (sideways, up, ...), or refuse the rotation.
       const cells = getOrientations(id)[next]!.cells;
       const kicked = kickPosition(this.deps.game.grid, cells, free.x, free.y, free.z);
-      if (!kicked) return false;
+      if (!kicked) {
+        this.emit('blocked');
+        return false;
+      }
       [free.x, free.y, free.z] = kicked;
     }
     this.held.orientation = next;
+    this.emit('rotate');
     return true;
   }
 
-  cancel(): void {
+  /** Put the held piece back in the tray (`silent`: no feedback event). */
+  cancel(silent = false): void {
+    if (this.held && !silent) this.emit('cancel');
     this.held = null;
     this.free = null;
     this.pressAt = null;
@@ -294,7 +312,8 @@ export class PieceController {
     }
     if (this.tryPlace()) return;
     // A failed drag snaps back to the tray; a failed click keeps holding.
-    if (wasDrag) this.cancel();
+    this.emit('invalid');
+    if (wasDrag) this.cancel(true);
   }
 
   private tryPlace(): boolean {
@@ -353,7 +372,7 @@ export class PieceController {
     if (this.locked) return null;
     const result = this.deps.game.place(slot, orientation, x, y);
     if (!result) return null;
-    this.cancel();
+    this.cancel(true);
     this.deps.onPlaced(result);
     return result;
   }
@@ -361,7 +380,11 @@ export class PieceController {
   /** After a restart: drop whatever is held and show the new tray. */
   reset(): void {
     this.locked = false;
-    this.cancel();
+    this.cancel(true);
+  }
+
+  private emit(event: PieceEvent): void {
+    this.deps.onEvent?.(event);
   }
 
   private renderTray(): void {

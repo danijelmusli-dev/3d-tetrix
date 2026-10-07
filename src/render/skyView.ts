@@ -161,6 +161,11 @@ export class SkyView {
     this.apply();
   }
 
+  /** Sky index 0..5 (also drives music intensity). */
+  get level(): number {
+    return this.index;
+  }
+
   get themeName(): string {
     return SKY_THEMES[this.index]!.name;
   }
