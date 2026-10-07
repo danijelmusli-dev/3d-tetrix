@@ -10,6 +10,21 @@ describe('Tray', () => {
     for (const id of tray.pieces) expect(PIECE_IDS).toContain(id);
   });
 
+  it('deals pieces by weight: every piece appears, small ones less often', () => {
+    const tray = new Tray(createRng(123));
+    const counts = new Map<string, number>();
+    for (let i = 0; i < 3000; i++) {
+      tray.take(0);
+      tray.take(1);
+      tray.take(2);
+      tray.refillIfEmpty();
+      for (const id of tray.pieces) counts.set(id!, (counts.get(id!) ?? 0) + 1);
+    }
+    for (const id of PIECE_IDS) expect(counts.get(id)).toBeGreaterThan(0);
+    expect(counts.get('M')!).toBeLessThan(counts.get('D')!);
+    expect(counts.get('D')!).toBeLessThan(counts.get('T')!);
+  });
+
   it('is deterministic for a seed', () => {
     expect(new Tray(createRng(9)).pieces).toEqual(new Tray(createRng(9)).pieces);
   });

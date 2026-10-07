@@ -8,14 +8,18 @@ import {
 } from '../../src/core/orientations';
 
 describe('pieces', () => {
-  it('defines 7 flat tetrominoes with unique colors', () => {
-    expect(PIECE_IDS).toHaveLength(7);
+  it('defines 7 flat tetrominoes plus a domino and a single cube, all with unique colors', () => {
+    expect(PIECE_IDS).toHaveLength(9);
     const colors = new Set(PIECE_IDS.map((id) => PIECES[id].colorId));
-    expect(colors.size).toBe(7);
-    for (const id of PIECE_IDS) {
-      expect(PIECES[id].cells).toHaveLength(4);
-      expect(PIECES[id].cells.every(([, , z]) => z === 0)).toBe(true);
-    }
+    expect(colors.size).toBe(9);
+    const sizes = Object.fromEntries(PIECE_IDS.map((id) => [id, PIECES[id].cells.length]));
+    expect(sizes).toEqual({ I: 4, O: 4, T: 4, S: 4, Z: 4, J: 4, L: 4, D: 2, M: 1 });
+    for (const id of PIECE_IDS) expect(PIECES[id].cells.every(([, , z]) => z === 0)).toBe(true);
+  });
+
+  it('weights small pieces below the tetrominoes', () => {
+    expect(PIECES.M.weight).toBeLessThan(PIECES.D.weight);
+    expect(PIECES.D.weight).toBeLessThan(PIECES.I.weight);
   });
 });
 
@@ -35,7 +39,7 @@ describe('normalize', () => {
 
 describe('getOrientations', () => {
   // In 3D, S flipped over is Z and J flipped over is L, so those have no mirror symmetry.
-  const expected = { I: 3, O: 3, T: 12, S: 12, Z: 12, J: 24, L: 24 } as const;
+  const expected = { I: 3, O: 3, T: 12, S: 12, Z: 12, J: 24, L: 24, D: 3, M: 1 } as const;
 
   for (const id of PIECE_IDS) {
     it(`${id} has ${expected[id]} distinct 3D orientations`, () => {
@@ -54,10 +58,10 @@ describe('getOrientations', () => {
     expect(getOrientations('I').some((o) => o.extent[2] === 4)).toBe(true);
   });
 
-  it('every orientation is normalized with 4 cells', () => {
+  it('every orientation is normalized and keeps the piece size', () => {
     for (const id of PIECE_IDS) {
       for (const o of getOrientations(id)) {
-        expect(o.cells).toHaveLength(4);
+        expect(o.cells).toHaveLength(PIECES[id].cells.length);
         for (const axis of [0, 1, 2] as const) {
           expect(Math.min(...o.cells.map((c) => c[axis]))).toBe(0);
           expect(Math.max(...o.cells.map((c) => c[axis])) + 1).toBe(o.extent[axis]);

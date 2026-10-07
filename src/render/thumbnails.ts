@@ -34,6 +34,18 @@ export function createPieceThumbnails(): Record<PieceId, string> {
     Math.cos(elev) * Math.cos(azim),
   );
 
+  // One shared scale (fit to the largest piece) so a single cube looks small next to an I.
+  const radius = Math.max(
+    ...PIECE_IDS.map((id) => {
+      const box = new THREE.Box3();
+      for (const [x, y, z] of PIECES[id].cells) {
+        box.expandByPoint(new THREE.Vector3(x - 0.5, z - 0.5, y - 0.5));
+        box.expandByPoint(new THREE.Vector3(x + 0.5, z + 0.5, y + 0.5));
+      }
+      return box.getBoundingSphere(new THREE.Sphere()).radius;
+    }),
+  );
+
   const result = {} as Record<PieceId, string>;
   for (const id of PIECE_IDS) {
     const piece = new THREE.Group();
@@ -51,7 +63,7 @@ export function createPieceThumbnails(): Record<PieceId, string> {
     scene.add(piece);
 
     const fov = THREE.MathUtils.degToRad(CAMERA.fov);
-    const distance = (sphere.radius * 1.05) / Math.sin(fov / 2);
+    const distance = (radius * 1.05) / Math.sin(fov / 2);
     camera.position.copy(dir).multiplyScalar(distance);
     camera.lookAt(0, 0, 0);
     renderer.render(scene, camera);

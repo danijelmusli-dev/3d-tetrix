@@ -1,7 +1,8 @@
-import { PIECE_IDS, type PieceId } from './pieces';
+import { PIECE_IDS, PIECES, type PieceId } from './pieces';
 import type { Rng } from './rng';
 
 export const TRAY_SLOTS = 3;
+const TOTAL_WEIGHT = PIECE_IDS.reduce((sum, id) => sum + PIECES[id].weight, 0);
 
 /** Block Blast style hand: 3 pieces, refilled only once all are used. */
 export class Tray {
@@ -33,9 +34,15 @@ export class Tray {
   }
 
   private deal(): PieceId[] {
-    return Array.from(
-      { length: TRAY_SLOTS },
-      () => PIECE_IDS[Math.floor(this.rng() * PIECE_IDS.length)]!,
-    );
+    return Array.from({ length: TRAY_SLOTS }, () => this.pick());
+  }
+
+  /** Weighted random piece (see PieceDef.weight). */
+  private pick(): PieceId {
+    let roll = this.rng() * TOTAL_WEIGHT;
+    // The last piece also catches float rounding at the very top of the range.
+    return PIECE_IDS.find(
+      (id, i) => (roll -= PIECES[id].weight) < 0 || i === PIECE_IDS.length - 1,
+    )!;
   }
 }

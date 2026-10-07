@@ -19,7 +19,8 @@ export class TrayView {
       b.addEventListener('pointerdown', (e) => {
         if (e.button !== 0) return;
         e.preventDefault();
-        b.releasePointerCapture(e.pointerId);
+        // Touch pointers are implicitly captured; release so moves reach the board.
+        if (b.hasPointerCapture(e.pointerId)) b.releasePointerCapture(e.pointerId);
         onPick(i, e);
       });
       this.el.appendChild(b);

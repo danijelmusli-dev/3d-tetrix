@@ -1,6 +1,7 @@
 import type { Vec3 } from './grid';
 
-export const PIECE_IDS = ['I', 'O', 'T', 'S', 'Z', 'J', 'L'] as const;
+/** 7 tetrominoes, plus D (domino, 2 cubes) and M (mono, 1 cube). */
+export const PIECE_IDS = ['I', 'O', 'T', 'S', 'Z', 'J', 'L', 'D', 'M'] as const;
 export type PieceId = (typeof PIECE_IDS)[number];
 
 export interface PieceDef {
@@ -9,7 +10,11 @@ export interface PieceDef {
   colorId: number;
   /** Base shape, lying flat on z = 0. */
   cells: readonly Vec3[];
+  /** Relative chance of being dealt. Small pieces are rarer so they stay a treat. */
+  weight: number;
 }
+
+const WEIGHTS: Partial<Record<PieceId, number>> = { D: 0.6, M: 0.4 };
 
 const flat = (points: [number, number][]): Vec3[] => points.map(([x, y]) => [x, y, 0]);
 
@@ -56,9 +61,14 @@ const SHAPES: Record<PieceId, Vec3[]> = {
     [1, 1],
     [2, 1],
   ]),
+  D: flat([
+    [0, 0],
+    [1, 0],
+  ]),
+  M: flat([[0, 0]]),
 };
 
 export const PIECES = {} as Record<PieceId, PieceDef>;
 PIECE_IDS.forEach((id, i) => {
-  PIECES[id] = { id, colorId: i + 1, cells: SHAPES[id] };
+  PIECES[id] = { id, colorId: i + 1, cells: SHAPES[id], weight: WEIGHTS[id] ?? 1 };
 });

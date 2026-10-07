@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
+import { Grid } from '../../src/core/grid';
 import { getOrientations } from '../../src/core/orientations';
+import { fits } from '../../src/core/placement';
 import {
+  aimTarget,
   anchorFor,
   gridAxisFor,
   initialOrientation,
@@ -93,5 +96,43 @@ describe('stepFor', () => {
     expect(stepFor(1, 'toward')).toEqual([-1, 0]);
     expect(stepFor(2, 'right')).toEqual([-1, 0]);
     expect(stepFor(3, 'away')).toEqual([-1, 0]);
+  });
+});
+
+describe('aimTarget', () => {
+  it('centers on the column and finds the drop height for the given orientation', () => {
+    const grid = new Grid(10, 10);
+    const flatI = getOrientations('I')[0]!;
+    expect(aimTarget(grid, flatI, [5, 2])).toEqual({ x: 4, y: 2, z: 0 });
+  });
+
+  it('reports z null where the orientation cannot be dropped', () => {
+    const grid = new Grid(10, 4);
+    for (let z = 0; z < 4; z++) grid.set(5, 2, z, 1); // full column
+    const flatI = getOrientations('I')[0]!;
+    expect(aimTarget(grid, flatI, [5, 2])).toEqual({ x: 4, y: 2, z: null });
+  });
+
+  it('re-aims the same column correctly after a rotation (regression)', () => {
+    // A flat I fits at z=0 along row y=2, but the same spot turned along Y runs into a cube.
+    const grid = new Grid(10, 10);
+    grid.set(5, 4, 0, 1);
+    const flatI = getOrientations('I')[0]!;
+    const alongY = getOrientations('I').find((o) => o.extent.join() === '1,4,1')!;
+    expect(aimTarget(grid, flatI, [6, 2])).toEqual({ x: 5, y: 2, z: 0 });
+    // Re-aiming with the new orientation never yields a spot that overlaps cubes.
+    for (const column of [
+      [6, 2],
+      [5, 2],
+      [5, 4],
+    ] as const) {
+      const t = aimTarget(grid, alongY, column)!;
+      expect(t.z).not.toBeNull();
+      expect(fits(grid, alongY.cells, t.x, t.y, t.z!)).toBe(true);
+    }
+  });
+
+  it('is null off the board', () => {
+    expect(aimTarget(new Grid(10, 10), getOrientations('O')[0]!, [-1, 3])).toBeNull();
   });
 });

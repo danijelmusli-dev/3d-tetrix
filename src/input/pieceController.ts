@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import type { Game, PlaceResult } from '../core/game';
-import { getOrientations } from '../core/orientations';
+import { getOrientations, type Orientation } from '../core/orientations';
 import { PIECES } from '../core/pieces';
 import { fallZ, fits, restingZ, slideToward } from '../core/placement';
 import type { BoardSpin } from '../render/boardSpin';
@@ -8,6 +8,7 @@ import type { BoardView } from '../render/boardView';
 import type { GhostView } from '../render/ghostView';
 import type { TrayView } from '../ui/trayView';
 import {
+  aimTarget,
   anchorFor,
   initialOrientation,
   rotateForView,
@@ -65,8 +66,8 @@ export class PieceController {
   private pressAt: { x: number; y: number } | null = null;
   private dragged = false;
   private free: FreePosition | null = null;
-  /** Last legal drop spot, so free move can be toggled from a button (no hover on touch). */
-  private lastTarget: Target | null = null;
+  /** Last on-board column aimed at, so free move can start from a button (no hover on touch). */
+  private lastColumn: [number, number] | null = null;
   /** After a keyboard step, ignore the mouse until it actually moves again. */
   private keyStepped = false;
   /** True while a placement animation plays: no ghost, no placing. */
@@ -137,8 +138,11 @@ export class PieceController {
       return;
     }
     if (this.free || !this.held) return;
-    const aimed = this.target();
-    const target = aimed?.z != null ? aimed : this.lastTarget;
+    // Use the pointer's column, or the last aimed one (Slide button / keys while the
+    // pointer is off the board), and re-aim it with the CURRENT orientation: a spot
+    // remembered for an earlier rotation may overlap cubes after rotating.
+    const column = this.aimedColumn() ?? this.lastColumn;
+    const target = column && aimTarget(this.deps.game.grid, this.heldOrientation()!, column);
     if (target?.z == null) return; // only lock onto a legal landing spot
     this.free = { x: target.x, y: target.y, z: target.z };
   }
@@ -178,7 +182,7 @@ export class PieceController {
       return;
     }
     this.held = { slot, orientation: initialOrientation(id, this.deps.spin.quarter) };
-    this.lastTarget = null;
+    this.lastColumn = null;
     this.startPress(e);
     this.renderTray();
   }
@@ -221,7 +225,6 @@ export class PieceController {
       this.deps.ghost.hide();
       return;
     }
-    if (target.z !== null) this.lastTarget = target;
     const { game } = this.deps;
     const id = game.tray.pieces[held.slot]!;
     const o = getOrientations(id)[held.orientation]!;
@@ -235,6 +238,12 @@ export class PieceController {
     const { game } = this.deps;
     const id = game.tray.pieces[this.held!.slot]!;
     const o = getOrientations(id)[this.held!.orientation]!;
+    // Invariant: a carried piece always fits. If it ever does not, release slide
+    // mode instead of showing a ghost that cannot be placed.
+    if (!fits(game.grid, o.cells, free.x, free.y, free.z)) {
+      this.setFree(false);
+      return;
+    }
     const column = this.keyStepped ? null : this.aimedColumn();
     const anchor = column && anchorFor(column, o.extent, game.grid.size);
     if (anchor)
@@ -323,17 +332,16 @@ export class PieceController {
 
   /** Drop-from-above target under the pointer. */
   private target(): Target | null {
-    const { held } = this;
-    const column = held && this.aimedColumn();
-    if (!held || !column) return null;
-    const { game } = this.deps;
+    const orientation = this.heldOrientation();
+    const column = orientation && this.aimedColumn();
+    if (!orientation || !column) return null;
+    if (anchorFor(column, orientation.extent, this.deps.game.grid.size)) this.lastColumn = column;
+    return aimTarget(this.deps.game.grid, orientation, column);
+  }
 
-    const id = game.tray.pieces[held.slot]!;
-    const o = getOrientations(id)[held.orientation]!;
-    const anchor = anchorFor(column, o.extent, game.grid.size);
-    if (!anchor) return null;
-    const [x, y] = anchor;
-    return { x, y, z: game.landingZ(held.slot, held.orientation, x, y) };
+  private heldOrientation(): Orientation | null {
+    const id = this.held && this.deps.game.tray.pieces[this.held.slot];
+    return id ? getOrientations(id)[this.held!.orientation]! : null;
   }
 
   /** Debug: place a tray piece directly, through the same onPlaced path as the mouse. */

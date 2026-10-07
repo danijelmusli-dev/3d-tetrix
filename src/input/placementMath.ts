@@ -7,8 +7,9 @@
  * 90° turns (counter-clockwise from above), so those world directions map to
  * different grid axes per quarter. Grid x = local three x, grid y = local three z.
  */
-import type { Vec3 } from '../core/grid';
-import { rotateOrientation, type Axis } from '../core/orientations';
+import type { Grid, Vec3 } from '../core/grid';
+import { rotateOrientation, type Axis, type Orientation } from '../core/orientations';
+import { dropZ } from '../core/placement';
 import type { PieceId } from '../core/pieces';
 
 export type ScreenAxis = 'right' | 'toward';
@@ -27,6 +28,23 @@ export function anchorFor(
     clamp(cx - Math.floor((extent[0] - 1) / 2), extent[0]),
     clamp(cy - Math.floor((extent[1] - 1) / 2), extent[1]),
   ];
+}
+
+/**
+ * Drop target for an orientation aimed at a grid column: footprint centered on
+ * the column (clamped onto the board) and its landing z, or z null if it
+ * cannot be dropped there. Null when the column is off the board. Always
+ * computed from the orientation passed in, so it stays valid after rotations.
+ */
+export function aimTarget(
+  grid: Grid,
+  orientation: Orientation,
+  column: readonly [number, number],
+): { x: number; y: number; z: number | null } | null {
+  const anchor = anchorFor(column, orientation.extent, grid.size);
+  if (!anchor) return null;
+  const [x, y] = anchor;
+  return { x, y, z: dropZ(grid, orientation.cells, x, y) };
 }
 
 /** Grid axis (with sign) that currently points along a screen direction. */
