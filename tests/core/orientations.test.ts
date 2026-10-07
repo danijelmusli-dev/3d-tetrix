@@ -8,13 +8,22 @@ import {
 } from '../../src/core/orientations';
 
 describe('pieces', () => {
-  it('defines 7 flat tetrominoes plus a domino and a single cube, all with unique colors', () => {
-    expect(PIECE_IDS).toHaveLength(9);
+  it('defines 7 tetrominoes, a domino, a single cube and a 2x2x2 box, all with unique colors', () => {
+    expect(PIECE_IDS).toHaveLength(10);
     const colors = new Set(PIECE_IDS.map((id) => PIECES[id].colorId));
-    expect(colors.size).toBe(9);
+    expect(colors.size).toBe(10);
     const sizes = Object.fromEntries(PIECE_IDS.map((id) => [id, PIECES[id].cells.length]));
-    expect(sizes).toEqual({ I: 4, O: 4, T: 4, S: 4, Z: 4, J: 4, L: 4, D: 2, M: 1 });
-    for (const id of PIECE_IDS) expect(PIECES[id].cells.every(([, , z]) => z === 0)).toBe(true);
+    expect(sizes).toEqual({ I: 4, O: 4, T: 4, S: 4, Z: 4, J: 4, L: 4, D: 2, M: 1, B: 8 });
+    // Every base shape rests on the floor; all but the box lie flat.
+    for (const id of PIECE_IDS) {
+      expect(Math.min(...PIECES[id].cells.map(([, , z]) => z))).toBe(0);
+      if (id !== 'B') expect(PIECES[id].cells.every(([, , z]) => z === 0)).toBe(true);
+    }
+  });
+
+  it('the box is a solid 2x2x2 cube', () => {
+    expect(getOrientations('B')[0]!.extent).toEqual([2, 2, 2]);
+    expect(PIECES.B.weight).toBeLessThan(PIECES.I.weight);
   });
 
   it('weights small pieces below the tetrominoes', () => {
@@ -39,7 +48,7 @@ describe('normalize', () => {
 
 describe('getOrientations', () => {
   // In 3D, S flipped over is Z and J flipped over is L, so those have no mirror symmetry.
-  const expected = { I: 3, O: 3, T: 12, S: 12, Z: 12, J: 24, L: 24, D: 3, M: 1 } as const;
+  const expected = { I: 3, O: 3, T: 12, S: 12, Z: 12, J: 24, L: 24, D: 3, M: 1, B: 1 } as const;
 
   for (const id of PIECE_IDS) {
     it(`${id} has ${expected[id]} distinct 3D orientations`, () => {

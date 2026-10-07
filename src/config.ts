@@ -17,6 +17,7 @@ export const PIECE_COLORS = [
   0xe07b2c, // L - orange
   0xe56ba8, // D (domino) - pink
   0xe9e4d4, // M (single cube) - ivory
+  0xb8e05a, // B (2x2x2 box) - lime
 ] as const;
 
 export const COLORS = {
