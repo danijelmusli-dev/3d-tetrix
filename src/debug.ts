@@ -76,9 +76,11 @@ export function installDebug({
   const slow = Number(new URLSearchParams(location.hash.slice(1)).get('slow'));
   if (slow > 0) animator.timeScale = 1 / slow;
   let last = { clientX: 0, clientY: 0 };
+  // #touch: scripted pointer events behave like a finger (aim lifted above it).
+  const pointerType = new URLSearchParams(location.hash.slice(1)).has('touch') ? 'touch' : 'mouse';
   const pointer = (type: string, x: number, y: number): void => {
     last = { clientX: x, clientY: y };
-    window.dispatchEvent(new PointerEvent(type, { ...last, button: 0 }));
+    window.dispatchEvent(new PointerEvent(type, { ...last, button: 0, pointerType }));
   };
   const api: DebugApi = {
     game,
@@ -108,7 +110,7 @@ export function installDebug({
     },
     hold(slot, x = 0, y = 0) {
       last = { clientX: x, clientY: y };
-      controller.pick(slot, new PointerEvent('pointerdown', { ...last, button: 0 }));
+      controller.pick(slot, new PointerEvent('pointerdown', { ...last, button: 0, pointerType }));
     },
     aim(x, y) {
       pointer('pointermove', x, y);

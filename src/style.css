@@ -241,3 +241,187 @@ body {
     animation-duration: 1ms;
   }
 }
+
+.hud-best {
+  min-height: 1em;
+  font-size: 11px;
+  color: #9fb3bf;
+  font-variant-numeric: tabular-nums;
+}
+
+.game-over-best {
+  margin: -14px 0 18px;
+  color: #ffe08a;
+  font-weight: 700;
+}
+
+/* Held-piece buttons: a column on the left on wide screens; a row above the
+   tray on phones, where it always keeps its space so the camera framing does
+   not jump when a piece is picked up. */
+.piece-controls {
+  position: fixed;
+  left: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 6px;
+  border-radius: 14px;
+  background: rgb(30 36 40 / 55%);
+  backdrop-filter: blur(6px);
+  visibility: hidden;
+}
+
+.piece-controls.visible {
+  visibility: visible;
+}
+
+.piece-controls button {
+  min-width: 44px;
+  height: 44px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 10px;
+  background: #52646e;
+  color: #e6eef2;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.piece-controls button[hidden] {
+  display: none;
+}
+
+.piece-controls button:hover {
+  background: #607682;
+}
+
+.piece-controls button.slide {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.piece-controls button.slide[aria-pressed='true'] {
+  background: #d9a441;
+  color: #1e2428;
+}
+
+.help-button {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  width: 40px;
+  height: 40px;
+  border: 0;
+  border-radius: 50%;
+  background: #52646e;
+  color: #e6eef2;
+  font-size: 20px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.help-panel {
+  position: fixed;
+  top: 64px;
+  right: 16px;
+  width: min(360px, calc(100vw - 32px));
+  max-height: calc(100vh - 96px);
+  overflow: auto;
+  padding: 18px 20px;
+  border-radius: 16px;
+  background: #2a3237;
+  color: #e6eef2;
+  font-size: 14px;
+  line-height: 1.45;
+  box-shadow: 0 12px 40px rgb(0 0 0 / 45%);
+  z-index: 10;
+}
+
+.help-panel h2 {
+  margin: 0 0 8px;
+  font-size: 18px;
+}
+
+.help-panel p {
+  margin: 0 0 12px;
+  color: #c4d2da;
+}
+
+.help-panel dl {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 6px 14px;
+  margin: 0;
+}
+
+.help-panel dt {
+  font-weight: 700;
+  color: #ffe08a;
+}
+
+.help-panel dd {
+  margin: 0;
+}
+
+button:focus-visible {
+  outline: 2px solid #ffe08a;
+  outline-offset: 2px;
+}
+
+@media (max-width: 600px) {
+  .hud-score {
+    top: 10px;
+    padding: 6px 16px;
+  }
+
+  .hud-value {
+    font-size: 22px;
+  }
+
+  .help-button {
+    top: 10px;
+    right: 10px;
+  }
+
+  .tray {
+    bottom: 10px;
+    gap: 8px;
+    padding: 8px;
+  }
+
+  .tray-slot {
+    width: 84px;
+    height: 62px;
+  }
+
+  .piece-controls {
+    top: auto;
+    left: 50%;
+    bottom: 100px;
+    flex-direction: row;
+    transform: translateX(-50%);
+    gap: 4px;
+    padding: 4px;
+  }
+
+  .piece-controls button {
+    min-width: 40px;
+    height: 40px;
+    padding: 0 6px;
+    font-size: 18px;
+  }
+
+  .spin-controls {
+    top: 60px;
+    right: 10px;
+    bottom: auto;
+  }
+
+  .spin-controls button {
+    width: 44px;
+    height: 44px;
+  }
+}

@@ -13,7 +13,10 @@ import { animatePlacement } from './render/placeAnimation';
 import { createScene } from './render/scene';
 import { createPieceThumbnails } from './render/thumbnails';
 import { createSpinButtons } from './ui/controls';
+import { createHelp } from './ui/help';
 import { Hud } from './ui/hud';
+import { PieceControls } from './ui/pieceControls';
+import { loadBest, saveBest } from './ui/storage';
 import { TrayView } from './ui/trayView';
 
 const container = document.getElementById('app');
@@ -74,7 +77,13 @@ const controller = new PieceController({
       refresh();
       hud.setScore(game.score);
       controller.locked = false;
-      if (result.gameOver) hud.showGameOver(game.score);
+      const newBest = game.score > best;
+      if (newBest) {
+        best = game.score;
+        saveBest(best);
+        hud.setBest(best);
+      }
+      if (result.gameOver) hud.showGameOver(game.score, newBest && game.score > startBest);
     }
   },
 });
@@ -96,19 +105,34 @@ createSpinButtons(
   () => spin.turn(-1),
 );
 
-const hud = new Hud(animator, restart);
+const pieceControls = new PieceControls({
+  rotate: (kind) => controller.rotate(kind, 1),
+  toggleFree: () => controller.toggleFree(),
+  raise: (dz) => controller.raise(dz),
+  cancel: () => controller.cancel(),
+});
+createHelp();
 
-/** Fit the camera into the space between the score readout and the tray. */
+const hud = new Hud(animator, restart);
+let best = loadBest();
+/** Best score when the current game started, to tell whether this game beat it. */
+let startBest = best;
+hud.setBest(best);
+
+/** Fit the camera into the space between the score readout and the piece controls / tray. */
 function layout(): void {
   const { clientWidth: w, clientHeight: h } = container!;
   const top = hud.scoreEl.getBoundingClientRect().bottom;
-  const bottom = h - tray.el.getBoundingClientRect().top;
+  // The controls bar only takes bottom space when laid out as a row (phones).
+  const row = getComputedStyle(pieceControls.el).flexDirection === 'row';
+  const bottom = h - (row ? pieceControls.el : tray.el).getBoundingClientRect().top;
   rig.layout(w, h, top, bottom);
 }
 window.addEventListener('resize', layout);
 layout();
 
 function restart(): void {
+  startBest = best;
   game.reset();
   controller.reset();
   refresh();
@@ -142,6 +166,7 @@ renderer.setAnimationLoop((now) => {
   try {
     animator.update(now);
     controller.update();
+    pieceControls.update(controller.holding, controller.isFree);
   } catch (err) {
     console.error('Frame update failed', err);
   }

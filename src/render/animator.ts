@@ -3,6 +3,11 @@ export type Easing = (t: number) => number;
 export const linear: Easing = (t) => t;
 export const easeOutCubic: Easing = (t) => 1 - Math.pow(1 - t, 3);
 export const easeInQuad: Easing = (t) => t * t;
+/** Overshoots slightly past 1 before settling (landing bounce). */
+export const easeOutBack: Easing = (t) => {
+  const s = 1.2;
+  return 1 + (s + 1) * Math.pow(t - 1, 3) + s * Math.pow(t - 1, 2);
+};
 export const easeInOutCubic: Easing = (t) =>
   t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
 

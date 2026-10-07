@@ -40,7 +40,7 @@ export const CAMERA = {
 
 /** Placement / clear animation timings (ms). */
 export const ANIM = {
-  dropMs: 140,
+  dropMs: 200,
   /** Height (layers) the placed piece drops in from. */
   dropHeight: 0.8,
   flashMs: 150,

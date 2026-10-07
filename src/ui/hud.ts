@@ -9,6 +9,8 @@ export class Hud {
   private readonly popups: HTMLElement;
   private readonly gameOver: HTMLElement;
   private readonly finalScore: HTMLElement;
+  private readonly bestValue: HTMLElement;
+  private readonly newBest: HTMLElement;
   private shown = 0;
   private tween?: TweenHandle;
 
@@ -20,6 +22,7 @@ export class Hud {
     score.append(
       el('span', 'hud-label', 'Score'),
       (this.scoreValue = el('span', 'hud-value', '0')),
+      (this.bestValue = el('span', 'hud-best')),
     );
     this.popups = el('div', 'hud-popups');
 
@@ -37,6 +40,7 @@ export class Hud {
       title,
       el('p', 'game-over-label', 'Final score'),
       (this.finalScore = el('p', 'game-over-score')),
+      (this.newBest = el('p', 'game-over-best', 'New best!')),
       again,
     );
     this.gameOver.appendChild(card);
@@ -72,8 +76,13 @@ export class Hud {
     this.popups.appendChild(item);
   }
 
-  showGameOver(score: number): void {
+  setBest(best: number): void {
+    this.bestValue.textContent = best > 0 ? `Best ${best}` : '';
+  }
+
+  showGameOver(score: number, isNewBest: boolean): void {
     this.finalScore.textContent = String(score);
+    this.newBest.hidden = !isNewBest;
     this.gameOver.hidden = false;
     this.gameOver.querySelector('button')?.focus();
   }

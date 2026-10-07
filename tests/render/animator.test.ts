@@ -3,14 +3,16 @@ import {
   Animator,
   easeInOutCubic,
   easeInQuad,
+  easeOutBack,
   easeOutCubic,
   linear,
 } from '../../src/render/animator';
 
 describe('easing', () => {
   it('maps 0 → 0 and 1 → 1', () => {
-    for (const ease of [linear, easeInOutCubic, easeOutCubic, easeInQuad]) {
-      expect(ease(0)).toBe(0);
+    for (const ease of [linear, easeInOutCubic, easeOutCubic, easeInQuad, easeOutBack]) {
+      // Start may carry float rounding; the end must be exact so tweens land precisely.
+      expect(ease(0)).toBeCloseTo(0, 12);
       expect(ease(1)).toBe(1);
     }
     expect(easeInOutCubic(0.5)).toBeCloseTo(0.5);

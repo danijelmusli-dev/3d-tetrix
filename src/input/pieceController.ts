@@ -11,6 +11,8 @@ import { anchorFor, initialOrientation, rotateForView, type RotationKind } from 
 
 /** Pointer travel (px) that turns a press into a drag. */
 const DRAG_THRESHOLD = 6;
+/** On touch the aim point sits this far (px) above the finger. */
+const TOUCH_LIFT_PX = 80;
 
 export interface PieceControllerDeps {
   game: Game;
@@ -52,10 +54,12 @@ interface FreePosition {
  */
 export class PieceController {
   private held: Held | null = null;
-  private pointer: { x: number; y: number } | null = null;
+  private pointer: { x: number; y: number; touch: boolean } | null = null;
   private pressAt: { x: number; y: number } | null = null;
   private dragged = false;
   private free: FreePosition | null = null;
+  /** Last legal drop spot, so free move can be toggled from a button (no hover on touch). */
+  private lastTarget: Target | null = null;
   /** True while a placement animation plays: no ghost, no placing. */
   locked = false;
   private readonly raycaster = new THREE.Raycaster();
@@ -92,6 +96,15 @@ export class PieceController {
     return this.held !== null;
   }
 
+  get isFree(): boolean {
+    return this.free !== null;
+  }
+
+  /** On-screen Slide button: same as holding / releasing Shift. */
+  toggleFree(): void {
+    this.setFree(!this.free);
+  }
+
   /** Snapshot for debug tooling. */
   debugState(): {
     held: Held | null;
@@ -114,7 +127,8 @@ export class PieceController {
       return;
     }
     if (this.free || !this.held) return;
-    const target = this.target();
+    const aimed = this.target();
+    const target = aimed?.z != null ? aimed : this.lastTarget;
     if (target?.z == null) return; // only lock onto a legal landing spot
     this.free = { x: target.x, y: target.y, z: target.z };
   }
@@ -136,6 +150,7 @@ export class PieceController {
       return;
     }
     this.held = { slot, orientation: initialOrientation(id, this.deps.spin.quarter) };
+    this.lastTarget = null;
     this.startPress(e);
     this.renderTray();
   }
@@ -178,6 +193,7 @@ export class PieceController {
       this.deps.ghost.hide();
       return;
     }
+    if (target.z !== null) this.lastTarget = target;
     const { game } = this.deps;
     const id = game.tray.pieces[held.slot]!;
     const o = getOrientations(id)[held.orientation]!;
@@ -210,13 +226,13 @@ export class PieceController {
   }
 
   private startPress(e: PointerEvent): void {
-    this.pointer = { x: e.clientX, y: e.clientY };
+    this.pointer = { x: e.clientX, y: e.clientY, touch: e.pointerType === 'touch' };
     this.pressAt = { x: e.clientX, y: e.clientY };
     this.dragged = false;
   }
 
   private onMove(e: PointerEvent): void {
-    this.pointer = { x: e.clientX, y: e.clientY };
+    this.pointer = { x: e.clientX, y: e.clientY, touch: e.pointerType === 'touch' };
     if (this.pressAt && !this.dragged) {
       const dist = Math.hypot(e.clientX - this.pressAt.x, e.clientY - this.pressAt.y);
       if (dist > DRAG_THRESHOLD) this.dragged = true;
@@ -225,7 +241,7 @@ export class PieceController {
 
   private onUp(e: PointerEvent): void {
     if (!this.held || !this.pressAt) return;
-    this.pointer = { x: e.clientX, y: e.clientY };
+    this.pointer = { x: e.clientX, y: e.clientY, touch: e.pointerType === 'touch' };
     const wasDrag = this.dragged;
     this.pressAt = null;
 
@@ -262,12 +278,15 @@ export class PieceController {
   /** Grid column under the pointer (may be off the board), or null. */
   private aimedColumn(): [number, number] | null {
     const { pointer } = this;
-    if (!pointer || this.deps.tray.contains(pointer.x, pointer.y)) return null;
     const { board, camera, canvas } = this.deps;
+    // Only aim while the pointer is over the board canvas, not over tray or buttons.
+    if (!pointer || document.elementFromPoint(pointer.x, pointer.y) !== canvas) return null;
+    // On touch, aim above the finger so the ghost is not hidden under it.
+    const y = pointer.y - (pointer.touch ? TOUCH_LIFT_PX : 0);
     const rect = canvas.getBoundingClientRect();
     const ndc = new THREE.Vector2(
       ((pointer.x - rect.left) / rect.width) * 2 - 1,
-      -((pointer.y - rect.top) / rect.height) * 2 + 1,
+      -((y - rect.top) / rect.height) * 2 + 1,
     );
     this.raycaster.setFromCamera(ndc, camera);
     return board.pickColumn(this.raycaster);

@@ -1,7 +1,7 @@
 import { ANIM } from '../config';
 import type { ClearStep } from '../core/clearing';
 import type { PlaceResult } from '../core/game';
-import { easeInQuad, easeOutCubic, linear, type Animator, type Easing } from './animator';
+import { easeInQuad, easeOutBack, linear, type Animator, type Easing } from './animator';
 import type { BoardView } from './boardView';
 import { DisplayBoard } from './displayBoard';
 
@@ -27,7 +27,8 @@ export async function animatePlacement(
     animator.tween({ from: 0, to: 1, duration, ease, onUpdate: (t) => (onUpdate(t), draw()) }).done;
 
   const placed = display.add(result.placed, result.colorId);
-  await run(ANIM.dropMs, easeOutCubic, (t) =>
+  // easeOutBack dips slightly below the resting height and settles: a small landing bounce.
+  await run(ANIM.dropMs, easeOutBack, (t) =>
     placed.forEach((cube, i) => (cube.z = result.placed[i]![2] + (1 - t) * ANIM.dropHeight)),
   );
 
