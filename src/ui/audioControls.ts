@@ -15,12 +15,7 @@ export class AudioControls {
     };
     this.music = add('♪', 'Music', 'M', actions.toggleMusic);
     this.sfx = add('', 'Sound effects', 'N', actions.toggleSfx);
-    // Static, trusted markup: a speaker icon (emoji render inconsistently across systems).
-    this.sfx.innerHTML =
-      '<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" ' +
-      'stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
-      '<path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor"/>' +
-      '<path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/></svg>';
+    this.sfx.appendChild(speakerIcon());
     document.body.appendChild(el);
   }
 
@@ -30,4 +25,33 @@ export class AudioControls {
     this.music.classList.toggle('off', !music);
     this.sfx.classList.toggle('off', !sfx);
   }
+}
+
+/** Speaker icon built from DOM nodes (emoji render inconsistently across systems). */
+function speakerIcon(): SVGSVGElement {
+  const ns = 'http://www.w3.org/2000/svg';
+  const make = <K extends keyof SVGElementTagNameMap>(
+    tag: K,
+    attrs: Record<string, string>,
+  ): SVGElementTagNameMap[K] => {
+    const node = document.createElementNS(ns, tag);
+    for (const [name, value] of Object.entries(attrs)) node.setAttribute(name, value);
+    return node;
+  };
+  const svg = make('svg', {
+    viewBox: '0 0 24 24',
+    width: '20',
+    height: '20',
+    'aria-hidden': 'true',
+    fill: 'none',
+    stroke: 'currentColor',
+    'stroke-width': '2',
+    'stroke-linecap': 'round',
+    'stroke-linejoin': 'round',
+  });
+  svg.append(
+    make('path', { d: 'M4 9h4l5-4v14l-5-4H4z', fill: 'currentColor' }),
+    make('path', { d: 'M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12' }),
+  );
+  return svg;
 }

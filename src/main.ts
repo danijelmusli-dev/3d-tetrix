@@ -41,14 +41,14 @@ if (!container) throw new Error('#app container missing');
 
 const { renderer, scene, camera, fitShadows, lights } = createScene(container);
 const animator = new Animator();
-const hashParams = new URLSearchParams(location.hash.slice(1));
-const debugSeed = import.meta.env.DEV ? Number(hashParams.get('seed')) || undefined : undefined;
-/** Dev: #size=8&height=6 overrides the saved board size. */
+/** Dev only: #seed=N fixes the tray, #size=8&height=6 overrides the saved board size. */
+const hashParams = import.meta.env.DEV ? new URLSearchParams(location.hash.slice(1)) : null;
+const debugSeed = Number(hashParams?.get('seed')) || undefined;
 const debugDims = {
-  size: Number(hashParams.get('size')),
-  height: Number(hashParams.get('height') ?? hashParams.get('size')),
+  size: Number(hashParams?.get('size')),
+  height: Number(hashParams?.get('height') ?? hashParams?.get('size')),
 };
-let dims: BoardDims = import.meta.env.DEV && isValidBoard(debugDims) ? debugDims : loadBoard();
+let dims: BoardDims = isValidBoard(debugDims) ? debugDims : loadBoard();
 
 const game = new Game({ size: dims.size, height: dims.height, seed: debugSeed });
 const board = new BoardView(dims.size, dims.height);

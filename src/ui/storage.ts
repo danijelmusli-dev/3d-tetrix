@@ -46,7 +46,7 @@ function bestKey({ size, height }: BoardDims): string {
 export function loadBest(dims: BoardDims): number {
   try {
     const value = Number(localStorage.getItem(bestKey(dims)));
-    return Number.isFinite(value) && value > 0 ? value : 0;
+    return Number.isSafeInteger(value) && value > 0 ? value : 0;
   } catch {
     return 0;
   }
