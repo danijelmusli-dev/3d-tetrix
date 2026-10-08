@@ -69,20 +69,19 @@ describe('CameraRig top view', () => {
   });
 });
 
-describe('CameraRig side insets', () => {
-  it('keeps the board out of a panel docked on the right', () => {
+describe('CameraRig vertical insets', () => {
+  it('keeps the board between the top and bottom UI', () => {
     const { camera, rig } = setup();
-    const width = 1600;
     const height = 900;
-    const panel = 300;
-    rig.layout(width, height, 0, 0, 0, panel);
+    const top = 120;
+    const bottom = 200;
+    rig.layout(1600, height, top, bottom);
     camera.updateMatrixWorld();
-    const panelEdge = 1 - (2 * panel) / width; // NDC x where the panel starts
     for (const x of [-5, 5])
       for (const z of [-5, 5]) {
         const p = new THREE.Vector3(x, 0, z).project(camera);
-        expect(p.x).toBeLessThan(panelEdge);
-        expect(p.x).toBeGreaterThan(-1);
+        expect(p.y).toBeLessThanOrEqual(1 - (2 * top) / height);
+        expect(p.y).toBeGreaterThanOrEqual(-1 + (2 * bottom) / height);
       }
   });
 });

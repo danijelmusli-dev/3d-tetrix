@@ -17,8 +17,6 @@ export class CameraRig {
   /** NDC extents (0..2) reserved at each viewport edge for UI. */
   private topInset = 0;
   private bottomInset = 0;
-  private leftInset = 0;
-  private rightInset = 0;
   private elevationDeg: number = CAMERA.elevationDeg;
   /** Tallest stack, used to frame tightly from above. */
   private stack = 0;
@@ -94,26 +92,10 @@ export class CameraRig {
    * (score, tray). The projection center shifts so the board is centered in
    * the remaining area.
    */
-  layout(
-    width: number,
-    height: number,
-    topPx: number,
-    bottomPx: number,
-    leftPx = 0,
-    rightPx = 0,
-  ): void {
+  layout(width: number, height: number, topPx: number, bottomPx: number): void {
     this.topInset = (2 * topPx) / height;
     this.bottomInset = (2 * bottomPx) / height;
-    this.leftInset = (2 * leftPx) / width;
-    this.rightInset = (2 * rightPx) / width;
-    this.camera.setViewOffset(
-      width,
-      height,
-      (rightPx - leftPx) / 2,
-      (bottomPx - topPx) / 2,
-      width,
-      height,
-    );
+    this.camera.setViewOffset(width, height, 0, (bottomPx - topPx) / 2, width, height);
     this.apply();
   }
 
@@ -152,8 +134,8 @@ export class CameraRig {
       corners.every((c) => {
         const p = c.clone().project(this.camera);
         return (
-          p.x >= -limit + this.leftInset &&
-          p.x <= limit - this.rightInset &&
+          p.x >= -limit &&
+          p.x <= limit &&
           p.y <= limit - this.topInset &&
           p.y >= -limit + this.bottomInset
         );

@@ -30,7 +30,7 @@ export interface PieceControllerDeps {
   tray: TrayView;
   camera: THREE.Camera;
   canvas: HTMLCanvasElement;
-  onPlaced: (result: PlaceResult) => void;
+  onPlaced: (result: PlaceResult) => void | Promise<void>;
   /** Feedback hooks (sound effects). */
   onEvent?: (event: PieceEvent) => void;
 }
@@ -194,6 +194,9 @@ export class PieceController {
     }
     this.held = { slot, orientation: initialOrientation(id, this.deps.spin.quarter) };
     this.lastColumn = null;
+    // A slide position belongs to the previous piece; it may not fit this one.
+    this.free = null;
+    this.keyStepped = false;
     this.startPress(e);
     this.renderTray();
     this.emit('pick');
@@ -274,9 +277,8 @@ export class PieceController {
     this.deps.ghost.show(o.cells, free.x, free.y, rest, PIECES[id].colorId, true, free.z);
   }
 
-  private heldCells(): readonly (readonly [number, number, number])[] | null {
-    const id = this.held && this.deps.game.tray.pieces[this.held.slot];
-    return id ? getOrientations(id)[this.held!.orientation]!.cells : null;
+  private heldCells(): Orientation['cells'] | null {
+    return this.heldOrientation()?.cells ?? null;
   }
 
   private onCanvasDown(e: PointerEvent): void {
@@ -332,7 +334,7 @@ export class PieceController {
     this.free = null;
     this.deps.ghost.hide();
     this.renderTray();
-    this.deps.onPlaced(result);
+    this.notifyPlaced(result);
     return true;
   }
 
@@ -373,8 +375,15 @@ export class PieceController {
     const result = this.deps.game.place(slot, orientation, x, y);
     if (!result) return null;
     this.cancel(true);
-    this.deps.onPlaced(result);
+    this.notifyPlaced(result);
     return result;
+  }
+
+  /** Hand the result to the game wiring; a failure there must not become an unhandled rejection. */
+  private notifyPlaced(result: PlaceResult): void {
+    Promise.resolve(this.deps.onPlaced(result)).catch((err: unknown) =>
+      console.error('Placement handler failed', err),
+    );
   }
 
   /** After a restart: drop whatever is held and show the new tray. */

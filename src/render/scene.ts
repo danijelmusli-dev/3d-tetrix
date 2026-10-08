@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { CAMERA, COLORS } from '../config';
+import { CAMERA } from '../config';
 
 export interface SceneContext {
   renderer: THREE.WebGLRenderer;
@@ -19,8 +19,8 @@ export function createScene(container: HTMLElement): SceneContext {
   renderer.shadowMap.type = THREE.PCFShadowMap;
   container.appendChild(renderer.domElement);
 
+  // No background color: SkyView paints the sky.
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color(COLORS.background);
 
   const camera = new THREE.PerspectiveCamera(CAMERA.fov, 1, 0.1, 500);
 

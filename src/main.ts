@@ -120,24 +120,32 @@ const controller = new PieceController({
       // The animation is cosmetic: never let it leave the game locked or the board stale.
       console.error('Placement animation failed', err);
     } finally {
-      refresh();
-      hud.setScore(game.score);
-      announceSky(game.score);
       controller.locked = false;
-      const newBest = game.score > best;
-      if (newBest) {
-        best = game.score;
-        saveBest(dims, best);
-        hud.setBest(best);
-      }
-      // Fanfare the first time this game beats a previous best.
-      if (startBest > 0 && game.score > startBest && !bestCheered) {
-        bestCheered = true;
-        sfx.newBest();
-      }
-      if (result.gameOver) {
-        sfx.gameOver();
-        hud.showGameOver(game.score, newBest && game.score > startBest);
+      const queued = pendingStart;
+      pendingStart = null;
+      if (queued) {
+        // A new game was requested mid-animation: this game's result no longer matters.
+        startGame(queued);
+      } else {
+        refresh();
+        hud.setScore(game.score);
+        announceSky(game.score);
+        const newBest = game.score > best;
+        if (newBest) {
+          best = game.score;
+          saveBest(dims, best);
+          hud.setBest(best);
+        }
+        // Fanfare the first time this game beats a previous best.
+        if (startBest > 0 && game.score > startBest && !bestCheered) {
+          bestCheered = true;
+          sfx.newBest();
+        }
+        if (result.gameOver) {
+          sfx.gameOver();
+          lastGameOverBest = newBest && game.score > startBest;
+          hud.showGameOver(game.score, lastGameOverBest);
+        }
       }
     }
   },
@@ -224,7 +232,15 @@ const pieceControls = new PieceControls({
 createHelp();
 new ControlsPanel();
 
-const settings = new BoardSettings(dims, startGame);
+/** A new game requested while a placement animation plays; started when it ends. */
+let pendingStart: BoardDims | null = null;
+/** Whether the finished game beat the best, so the game-over card can be shown again. */
+let lastGameOverBest = false;
+
+const settings = new BoardSettings(dims, startGame, () => {
+  // Closed without choosing a size: bring back the card so the game is not left dead.
+  if (game.gameOver) hud.showGameOver(game.score, lastGameOverBest);
+});
 const hud = new Hud(animator, restart, () => {
   hud.hideGameOver();
   settings.open();
@@ -250,6 +266,11 @@ layout();
 
 /** New game on a (possibly) different board size. */
 function startGame(next: BoardDims): void {
+  if (controller.locked) {
+    // Swapping the board under a running animation would draw old cubes on the new one.
+    pendingStart = next;
+    return;
+  }
   dims = next;
   saveBoard(dims);
   game.reset(undefined, dims.size, dims.height);

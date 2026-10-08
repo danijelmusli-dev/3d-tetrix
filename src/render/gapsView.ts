@@ -52,12 +52,6 @@ export class GapsView {
     if (this.group.visible) this.rebuild(grid);
   }
 
-  /** Number of gap cells currently shown (debug checks). */
-  get count(): number {
-    const glow = this.group.children[0];
-    return glow instanceof THREE.InstancedMesh ? glow.count : 0;
-  }
-
   private rebuild(grid: Grid): void {
     for (const child of this.group.children) {
       if (child instanceof THREE.InstancedMesh) child.dispose();

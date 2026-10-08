@@ -110,3 +110,21 @@ describe('BoardView.resize', () => {
     expect(board.drawnCount).toBe(1);
   });
 });
+
+describe('BoardView resize and draw', () => {
+  it('releases the old instanced mesh when the board is resized', () => {
+    const board = new BoardView(10, 10);
+    const old = board.group.getObjectByProperty('isInstancedMesh', true) as THREE.InstancedMesh;
+    let disposed = false;
+    old.addEventListener('dispose', () => (disposed = true));
+    board.resize(6, 6);
+    expect(disposed).toBe(true);
+  });
+
+  it('never draws more cubes than the board can hold', () => {
+    const board = new BoardView(6, 6);
+    const extra = Array.from({ length: 6 * 6 * 6 + 50 }, () => ({ x: 0, y: 0, z: 0, colorId: 1 }));
+    board.draw(extra);
+    expect(board.drawnCount).toBe(6 * 6 * 6);
+  });
+});

@@ -21,7 +21,6 @@ export const PIECE_COLORS = [
 ] as const;
 
 export const COLORS = {
-  background: 0x3a3a3a,
   slab: 0x52646e,
   cellLines: 0x6d808b,
 } as const;

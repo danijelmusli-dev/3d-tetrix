@@ -66,6 +66,8 @@ export class BoardView {
       if (!(object instanceof THREE.Mesh || object instanceof THREE.LineSegments)) return;
       if (object.geometry !== cubeGeometry) object.geometry.dispose();
       (object.material as THREE.Material).dispose();
+      // Frees the per-instance matrix and color buffers.
+      if (object instanceof THREE.InstancedMesh) object.dispose();
     });
     this.fixtures.clear();
     this.size = size;
@@ -99,8 +101,10 @@ export class BoardView {
     const matrix = new THREE.Matrix4();
     const scale = new THREE.Vector3();
     const color = new THREE.Color();
+    const capacity = this.cubes.instanceMatrix.count;
     let i = 0;
     for (const cube of cubes) {
+      if (i >= capacity) break;
       const s = cube.scale ?? 1;
       matrix.compose(
         this.cellCenter(cube.x, cube.y, cube.z),

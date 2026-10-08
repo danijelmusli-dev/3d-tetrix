@@ -46,6 +46,8 @@ export class AudioEngine {
   private buses!: Record<Bus, GainNode>;
   private reverbIn!: GainNode;
   private noiseBuffer!: AudioBuffer;
+  /** Last node before the speakers. */
+  private master?: AudioNode;
   private analyser?: AnalyserNode;
   private enabled: Record<Bus, boolean>;
   /** Called once the context exists (e.g. to start the music). */
@@ -58,8 +60,8 @@ export class AudioEngine {
     window.addEventListener('keydown', unlock, { capture: true });
     document.addEventListener('visibilitychange', () => {
       if (!this.ctx) return;
-      if (document.hidden) void this.ctx.suspend();
-      else void this.ctx.resume();
+      if (document.hidden) this.ctx.suspend().catch(() => {});
+      else this.ctx.resume().catch(() => {});
     });
   }
 
@@ -85,7 +87,7 @@ export class AudioEngine {
   /** Create / resume the context. Safe to call repeatedly. */
   unlock(): void {
     if (this.ctx) {
-      if (this.ctx.state === 'suspended' && !document.hidden) void this.ctx.resume();
+      if (this.ctx.state === 'suspended' && !document.hidden) this.ctx.resume().catch(() => {});
       return;
     }
     const Ctx = window.AudioContext;
@@ -97,9 +99,7 @@ export class AudioEngine {
     compressor.threshold.value = -16;
     compressor.ratio.value = 4;
     compressor.connect(ctx.destination);
-    this.analyser = ctx.createAnalyser();
-    this.analyser.fftSize = 2048;
-    compressor.connect(this.analyser);
+    this.master = compressor;
 
     const reverb = ctx.createConvolver();
     reverb.buffer = this.impulse(ctx, 2.6);
@@ -123,12 +123,17 @@ export class AudioEngine {
 
     const ready = (): void => this.onReady?.();
     if (ctx.state === 'running') ready();
-    else void ctx.resume().then(ready);
+    else ctx.resume().then(ready, () => {}); // blocked by the browser: the next gesture retries
   }
 
-  /** Current output loudness (RMS, 0..1) — used by debug checks. */
+  /** Current output loudness (RMS, 0..1) — used by debug checks. The meter is created on first use. */
   level(): number {
-    if (!this.analyser) return 0;
+    if (!this.ctx || !this.master) return 0;
+    if (!this.analyser) {
+      this.analyser = this.ctx.createAnalyser();
+      this.analyser.fftSize = 2048;
+      this.master.connect(this.analyser);
+    }
     const data = new Float32Array(this.analyser.fftSize);
     this.analyser.getFloatTimeDomainData(data);
     return Math.sqrt(data.reduce((sum, v) => sum + v * v, 0) / data.length);
@@ -216,8 +221,6 @@ export class AudioEngine {
       const send = this.ctx.createGain();
       send.gain.value = reverb;
       node.connect(send).connect(this.reverbIn);
-      // Respect the bus mute for the reverb tail too.
-      if (!this.enabled[bus]) send.gain.value = 0;
     }
   }
 

@@ -306,15 +306,17 @@ function buildScenario(api: DebugApi, params: URLSearchParams): void {
   }
   if (params.has('endgame')) {
     // Like the core game-over test: lower layers with one hole per line, top
-    // layer of isolated pits plus a single 4-wide slot at the front, (5..8, 9).
+    // layer of isolated pits plus a single 4-wide slot at the front row.
     const top = grid.height - 1;
+    const front = grid.size - 1;
     for (let z = 0; z < top; z++)
       for (let x = 0; x < grid.size; x++)
         for (let y = 0; y < grid.size; y++)
           if (y !== (x + 1) % grid.size) grid.set(x, y, z, ((x + y + z) % 7) + 1);
     for (let x = 0; x < grid.size; x++)
       for (let y = 0; y < grid.size; y++)
-        if (x !== y && !(y === 9 && x >= 5 && x <= 8)) grid.set(x, y, top, ((x + y) % 7) + 1);
+        if (x !== y && !(y === front && x >= front - 4 && x <= front - 1))
+          grid.set(x, y, top, ((x + y) % 7) + 1);
   }
   api.refresh();
 }

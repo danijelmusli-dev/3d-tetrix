@@ -8,12 +8,20 @@ export class BoardSettings {
   private readonly width: HTMLSelectElement;
   private readonly height: HTMLSelectElement;
 
-  constructor(current: BoardDims, onApply: (dims: BoardDims) => void) {
+  /**
+   * `onApply` starts a game on the chosen size; `onCancel` runs when the panel is
+   * dismissed (button or Esc) without applying.
+   */
+  constructor(
+    current: BoardDims,
+    onApply: (dims: BoardDims) => void,
+    private readonly onCancel: () => void = () => {},
+  ) {
     this.button = document.createElement('button');
     this.button.type = 'button';
     this.button.className = 'board-button';
     this.button.setAttribute('aria-expanded', 'false');
-    this.button.addEventListener('click', () => (this.isOpen ? this.close() : this.open()));
+    this.button.addEventListener('click', () => (this.isOpen ? this.dismiss() : this.open()));
 
     this.panel = document.createElement('div');
     this.panel.className = 'board-panel';
@@ -38,7 +46,7 @@ export class BoardSettings {
 
     this.panel.append(title, field('Width', this.width), field('Height', this.height), note, start);
     window.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') this.close();
+      if (e.key === 'Escape' && this.isOpen) this.dismiss();
     });
     document.body.append(this.button, this.panel);
     this.setCurrent(current);
@@ -64,6 +72,12 @@ export class BoardSettings {
   close(): void {
     this.panel.hidden = true;
     this.button.setAttribute('aria-expanded', 'false');
+  }
+
+  /** Close without applying. */
+  private dismiss(): void {
+    this.close();
+    this.onCancel();
   }
 }
 

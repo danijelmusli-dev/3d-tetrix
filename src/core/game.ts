@@ -1,3 +1,4 @@
+import { BOARD_HEIGHT, BOARD_SIZE } from '../config';
 import { resolveCascade, type ClearStep } from './clearing';
 import { Grid, type Vec3 } from './grid';
 import { getOrientations } from './orientations';
@@ -46,7 +47,7 @@ export class Game {
   gameOver = false;
 
   constructor(options: GameOptions = {}) {
-    const { size = 10, height = 10, seed = Date.now() } = options;
+    const { size = BOARD_SIZE, height = BOARD_HEIGHT, seed = Date.now() } = options;
     this.grid = options.grid ?? new Grid(size, height);
     this.tray = options.tray ?? new Tray(createRng(seed));
     this.gameOver = !this.hasAnyMove();
