@@ -1,6 +1,13 @@
 import * as THREE from 'three';
 import { easeInOutCubic, type Animator, type TweenHandle } from './animator';
-import { SKY_THEMES, themeIndexFor, type SkyTheme } from './skyThemes';
+import {
+  MOONS,
+  SKY_THEMES,
+  pickMoon,
+  themeIndexFor,
+  type MoonStyle,
+  type SkyTheme,
+} from './skyThemes';
 
 const TRANSITION_MS = 3000;
 
@@ -16,6 +23,8 @@ const COLOR_KEYS = [
 ] as const;
 const NUMBER_KEYS = [
   'sunStrength',
+  'sunY',
+  'moon',
   'clouds',
   'stars',
   'aurora',
@@ -44,8 +53,9 @@ const vertexShader = /* glsl */ `
 `;
 
 const fragmentShader = /* glsl */ `
-  uniform float uTime, uAspect, uSunStrength, uClouds, uStars, uAurora;
-  uniform vec3 uTop, uHorizon, uBottom, uSun, uCloud;
+  uniform float uTime, uAspect, uSunStrength, uSunY, uClouds, uStars, uAurora;
+  uniform float uMoonStrength, uMoonPhase, uMoonTilt, uMoonSize, uMoonHalo, uMoonRing;
+  uniform vec3 uTop, uHorizon, uBottom, uSun, uCloud, uMoonTint;
   varying vec2 vUv;
 
   float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
@@ -92,10 +102,33 @@ const fragmentShader = /* glsl */ `
       col += ac * a * uAurora * 0.9;
     }
 
-    // Sun / moon: soft glow plus a disc.
-    vec2 sunPos = vec2(0.8 * uAspect, 0.8);
+    // Sun: soft glow plus a disc, rising and setting with the theme.
+    vec2 sunPos = vec2(0.64 * uAspect, uSunY);
     float d = length(p - sunPos);
     col += uSun * uSunStrength * (exp(-d * 9.0) * 0.9 + (1.0 - smoothstep(0.035, 0.045, d)) * 0.8);
+
+    // Moon: lit sphere with a terminator (phase), maria, halo and an optional ring.
+    if (uMoonStrength > 0.0) {
+      vec2 mp = vec2(0.24 * uAspect, 0.74);
+      vec2 q = (p - mp) / (0.055 * uMoonSize);
+      float ct = cos(uMoonTilt), st = sin(uMoonTilt);
+      q = mat2(ct, st, -st, ct) * q;
+      float rr = length(q);
+      col += uMoonTint * uMoonStrength * (0.08 + 0.4 * uMoonHalo) * exp(-rr * 0.75);
+      if (uMoonRing > 0.5 && (q.y < 0.0 || rr > 1.0)) {
+        float ring = 1.0 - smoothstep(0.0, 0.32, abs(length(vec2(q.x, q.y * 3.2)) - 2.15));
+        col = mix(col, uMoonTint * 0.9, ring * 0.65 * uMoonStrength);
+      }
+      float disc = 1.0 - smoothstep(0.96, 1.0, rr);
+      float z = sqrt(max(1.0 - rr * rr, 0.0));
+      float a = uMoonPhase * 6.2831853;
+      vec3 light = vec3(sin(a), 0.0, -cos(a));
+      float lit = smoothstep(-0.04, 0.1, dot(vec3(q, z), light));
+      float maria = 0.7 + 0.45 * fbm(q * 1.7 + 3.0);
+      float crater = smoothstep(0.64, 0.72, noise(q * 5.5 + 9.0));
+      vec3 surface = uMoonTint * maria * (1.0 - 0.18 * crater) * (0.05 + lit * (0.6 + 0.4 * z));
+      col = mix(col, surface, disc * uMoonStrength);
+    }
 
     // Two drifting cloud layers.
     vec2 cp = p * vec2(1.6, 3.2);
@@ -125,12 +158,16 @@ export class SkyView {
   private from: Look;
   private to: Look;
   private tween?: TweenHandle;
+  private moonStyle: MoonStyle;
 
   constructor(
     scene: THREE.Scene,
     private readonly animator: Animator,
     private readonly lights: { hemi: THREE.HemisphereLight; sun: THREE.DirectionalLight },
+    /** Picks tonight's moon; injectable for tests. */
+    private readonly rng: () => number = Math.random,
   ) {
+    this.moonStyle = MOONS[0]!;
     this.current = lookOf(SKY_THEMES[0]!);
     this.from = this.current;
     this.to = this.current;
@@ -143,6 +180,14 @@ export class SkyView {
         uTime: { value: 0 },
         uAspect: { value: 1 },
         uSunStrength: { value: 0 },
+        uSunY: { value: 0.8 },
+        uMoonStrength: { value: 0 },
+        uMoonPhase: { value: 0.5 },
+        uMoonTilt: { value: 0 },
+        uMoonSize: { value: 1 },
+        uMoonHalo: { value: 0.6 },
+        uMoonRing: { value: 0 },
+        uMoonTint: { value: new THREE.Color() },
         uClouds: { value: 0 },
         uStars: { value: 0 },
         uAurora: { value: 0 },
@@ -166,6 +211,11 @@ export class SkyView {
     return this.index;
   }
 
+  /** Tonight's moon (a new one is rolled each time night falls). */
+  get moon(): MoonStyle {
+    return this.moonStyle;
+  }
+
   get themeName(): string {
     return SKY_THEMES[this.index]!.name;
   }
@@ -175,6 +225,7 @@ export class SkyView {
     const index = themeIndexFor(score);
     if (index === this.index) return null;
     this.index = index;
+    this.rollMoon(SKY_THEMES[index]!);
     this.blendTo(SKY_THEMES[index]!, TRANSITION_MS);
     return SKY_THEMES[index]!;
   }
@@ -184,6 +235,12 @@ export class SkyView {
     if (this.index === 0) return;
     this.index = 0;
     this.blendTo(SKY_THEMES[0]!, 800);
+  }
+
+  /** A new night starts: pick another moon, unless the last one is still visible. */
+  private rollMoon(theme: SkyTheme): void {
+    if (theme.moon > 0 && this.current.moon < 0.05)
+      this.moonStyle = pickMoon(this.rng, this.moonStyle);
   }
 
   /** Per frame: animate clouds / stars and keep stars round at any aspect. */
@@ -227,6 +284,15 @@ export class SkyView {
     (u.uSun!.value as THREE.Color).copy(c.sun);
     (u.uCloud!.value as THREE.Color).copy(c.cloudColor);
     u.uSunStrength!.value = c.sunStrength;
+    u.uSunY!.value = c.sunY;
+    u.uMoonStrength!.value = c.moon;
+    const m = this.moonStyle;
+    u.uMoonPhase!.value = m.phase;
+    u.uMoonTilt!.value = m.tilt;
+    u.uMoonSize!.value = m.size;
+    u.uMoonHalo!.value = m.halo;
+    u.uMoonRing!.value = m.ring ? 1 : 0;
+    (u.uMoonTint!.value as THREE.Color).set(m.tint);
     u.uClouds!.value = c.clouds;
     u.uStars!.value = c.stars;
     u.uAurora!.value = c.aurora;
