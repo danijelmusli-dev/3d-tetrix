@@ -240,6 +240,8 @@ const pieceControls = new PieceControls({
 createHelp();
 new SkinPicker(skin, createSkinPreviews, (id) => {
   board.setSkin(id);
+  // Piece colours depend on the skin (wood, slime and candy shift them), so redraw.
+  refresh();
   saveSkin(id);
   tray.setThumbnails(createPieceThumbnails(id));
 });

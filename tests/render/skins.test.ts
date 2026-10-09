@@ -23,10 +23,10 @@ describe('skins', () => {
     });
   }
 
-  it('shares the beveled cube except for the pixel and stud skins', () => {
+  it('shares the beveled cube except for the sharp-edged and stud skins', () => {
     for (const { id } of SKINS) {
       const skin = createSkin(id);
-      expect(skin.geometry === cubeGeometry).toBe(id !== 'pixel' && id !== 'studs');
+      expect(skin.geometry === cubeGeometry).toBe(!['pixel', 'wood', 'studs'].includes(id));
       skin.dispose();
     }
   });
@@ -37,6 +37,20 @@ describe('skins', () => {
       cubeGeometry.getAttribute('position').count,
     );
     skin.dispose();
+  });
+
+  it('wood pulls colours toward plank brown and candy toward pastel', () => {
+    const wood = createSkin('wood');
+    const blue = new THREE.Color(0x0000ff);
+    wood.recolor!(blue);
+    expect(blue.r).toBeGreaterThan(0.3);
+    expect(blue.b).toBeLessThan(1);
+    wood.dispose();
+    const candy = createSkin('candy');
+    const red = new THREE.Color(0xff0000);
+    candy.recolor!(red);
+    expect(red.g).toBeGreaterThan(0.2);
+    candy.dispose();
   });
 
   it('slime pulls colours toward green', () => {

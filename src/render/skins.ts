@@ -42,8 +42,11 @@ function canvasTexture(
   texture.colorSpace = options.srgb === false ? THREE.NoColorSpace : THREE.SRGBColorSpace;
   texture.anisotropy = 4;
   if (options.nearest) {
+    // Crisp pixels: no smoothing, no mip blur, no wrapping bleed at the tile edge.
     texture.magFilter = THREE.NearestFilter;
-    texture.minFilter = THREE.NearestMipmapNearestFilter;
+    texture.minFilter = THREE.NearestFilter;
+    texture.generateMipmaps = false;
+    texture.wrapS = texture.wrapT = THREE.ClampToEdgeWrapping;
   }
   return texture;
 }
@@ -84,28 +87,6 @@ function environment(): THREE.CanvasTexture | undefined {
   return texture;
 }
 
-function woodGrain(g: Pen, w: number, h: number): void {
-  const rand = seeded(11);
-  g.fillStyle = grey(236);
-  g.fillRect(0, 0, w, h);
-  for (let y = 0; y < h; y++) {
-    const wave = Math.sin(y * 0.35) * 0.5 + Math.sin(y * 0.11 + 2) * 0.5;
-    g.fillStyle = grey(236 - 26 * Math.max(wave, 0) - rand() * 10);
-    g.fillRect(0, y, w, 1);
-  }
-  // Knots and fine pores.
-  g.strokeStyle = grey(190);
-  g.lineWidth = 1;
-  for (let i = 0; i < 26; i++) {
-    const y = rand() * h;
-    const x = rand() * w;
-    g.beginPath();
-    g.moveTo(x, y);
-    g.lineTo(x + 6 + rand() * 18, y + (rand() - 0.5) * 2);
-    g.stroke();
-  }
-}
-
 function speckle(g: Pen, w: number, h: number, base: number, spread: number, seed: number): void {
   const rand = seeded(seed);
   g.fillStyle = grey(base);
@@ -128,19 +109,76 @@ function brushed(g: Pen, w: number, h: number): void {
   }
 }
 
-/** Chunky 8-bit tile: light face, dark rim, one-pixel highlight, a little noise. */
+/**
+ * Chunky 8-bit tile. The rim is the same on all four sides (a dark outline plus
+ * a light inner ring), so it looks identical whichever way a face is turned and
+ * neighbouring cubes meet edge to edge.
+ */
 function pixelTile(g: Pen, w: number): void {
   const rand = seeded(3);
   const n = 8;
   const cell = w / n;
   for (let y = 0; y < n; y++)
     for (let x = 0; x < n; x++) {
-      let v = 232 + rand() * 18;
-      if (x === 0 || y === 0) v = 255;
-      if (x === n - 1 || y === n - 1) v = 150;
+      const edge = Math.min(x, y, n - 1 - x, n - 1 - y);
+      const v = edge === 0 ? 140 : edge === 1 ? 255 : 226 + rand() * 20;
       g.fillStyle = grey(v);
       g.fillRect(x * cell, y * cell, cell, cell);
     }
+}
+
+/** Minecraft-style planks: four boards per face, dark seams, pixel grain and nail marks. */
+function plankTile(g: Pen, w: number): void {
+  const rand = seeded(17);
+  const n = 16;
+  const cell = w / n;
+  const px = (x: number, y: number, v: number): void => {
+    g.fillStyle = grey(v);
+    g.fillRect(x * cell, y * cell, cell, cell);
+  };
+  for (let board = 0; board < 4; board++) {
+    const shade = 226 + (board % 2) * 14 + rand() * 10;
+    for (let y = board * 4; y < board * 4 + 4; y++)
+      for (let x = 0; x < n; x++) {
+        let v = shade - rand() * 14;
+        if (y === board * 4 + 3) v = 168; // seam below each board
+        if (y === board * 4) v = Math.min(v + 14, 255); // lit top edge
+        px(x, y, v);
+      }
+    // Horizontal grain dashes.
+    for (let i = 0; i < 4; i++) {
+      const gx = Math.floor(rand() * 11);
+      const gy = board * 4 + 1 + Math.floor(rand() * 2);
+      for (let k = 0; k < 3 + Math.floor(rand() * 3); k++) px(gx + k, gy, shade - 30);
+    }
+    // Board ends, like staggered plank joints.
+    px(board % 2 ? 4 : 11, board * 4 + 1, 150);
+    px(board % 2 ? 4 : 11, board * 4 + 2, 150);
+  }
+}
+
+/**
+ * Cotton candy: smooth slanted bands with thin, bright glossy streaks and a
+ * little fluff. Drawn per pixel with a period that divides the tile, so it tiles
+ * without a seam.
+ */
+function candyStripes(g: Pen, w: number, h: number): void {
+  const rand = seeded(23);
+  const image = g.createImageData(w, h);
+  for (let y = 0; y < h; y++)
+    for (let x = 0; x < w; x++) {
+      // Slanted, gently wavy coordinate.
+      const t = (x + y) / 64 + 0.06 * Math.sin((x - y) * 0.09);
+      const wave = 0.5 + 0.5 * Math.sin(t * Math.PI * 2);
+      let v = 246 - 62 * wave * wave;
+      // Thin shiny streak on the bright side of each band.
+      v += 40 * Math.max(0, 1 - Math.abs(wave - 0.93) * 24);
+      v += (rand() - 0.5) * 10;
+      const i = (y * w + x) * 4;
+      image.data[i] = image.data[i + 1] = image.data[i + 2] = Math.max(0, Math.min(255, v));
+      image.data[i + 3] = 255;
+    }
+  g.putImageData(image, 0, 0);
 }
 
 function slimeBlobs(g: Pen, w: number, h: number): void {
@@ -185,27 +223,34 @@ function build(id: SkinId): Parts {
   switch (id) {
     case 'candy': {
       const envMap = environment();
+      const map = canvasTexture(128, 128, candyStripes);
       return {
-        textures: [envMap],
+        textures: [envMap, map],
+        // Pastel, like spun sugar, whatever the piece colour.
+        recolor: (color) => color.lerp(new THREE.Color(0xffffff), 0.32),
         material: new THREE.MeshPhysicalMaterial({
-          roughness: 0.18,
+          roughness: 0.2,
           clearcoat: 1,
-          clearcoatRoughness: 0.04,
+          clearcoatRoughness: 0.05,
+          // A soft fuzzy rim light, the cotton-candy fluff.
+          sheen: 1,
+          sheenRoughness: 0.35,
+          sheenColor: new THREE.Color(0xfff0fa),
+          map: map ?? null,
           envMap: envMap ?? null,
-          envMapIntensity: 0.8,
+          envMapIntensity: 0.9,
         }),
       };
     }
     case 'wood': {
-      const map = canvasTexture(128, 128, woodGrain);
+      const map = canvasTexture(64, 64, plankTile, { nearest: true });
       return {
         textures: [map],
-        material: new THREE.MeshStandardMaterial({
-          roughness: 0.8,
-          map: map ?? null,
-          bumpMap: map ?? null,
-          bumpScale: 1.4,
-        }),
+        // Oak: pull every piece colour toward plank brown.
+        recolor: (color) => color.lerp(new THREE.Color(0xc59a5c), 0.86),
+        // Sharp-edged blocks, like the game this look comes from.
+        geometry: new THREE.BoxGeometry(1, 1, 1),
+        material: new THREE.MeshStandardMaterial({ roughness: 0.9, map: map ?? null }),
       };
     }
     case 'stone': {
