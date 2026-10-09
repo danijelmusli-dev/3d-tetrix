@@ -8,6 +8,7 @@ export const easeOutBack: Easing = (t) => {
   const s = 1.2;
   return 1 + (s + 1) * Math.pow(t - 1, 3) + s * Math.pow(t - 1, 2);
 };
+export const easeInOutSine: Easing = (t) => -(Math.cos(Math.PI * t) - 1) / 2;
 export const easeInOutCubic: Easing = (t) =>
   t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
 

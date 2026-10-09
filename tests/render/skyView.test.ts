@@ -14,7 +14,7 @@ function setup(rolls: number[]) {
   const settle = (): void => {
     const now = performance.now();
     animator.update(now);
-    animator.update(now + 10_000);
+    animator.update(now + 20_000);
   };
   const uniform = (name: string): number =>
     (sky as unknown as { material: THREE.ShaderMaterial }).material.uniforms[name]!.value as number;

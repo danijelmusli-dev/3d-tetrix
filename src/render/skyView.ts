@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { easeInOutCubic, type Animator, type TweenHandle } from './animator';
+import { easeInOutSine, type Animator, type TweenHandle } from './animator';
 import {
   MOONS,
   SKY_THEMES,
@@ -9,7 +9,9 @@ import {
   type SkyTheme,
 } from './skyThemes';
 
-const TRANSITION_MS = 3000;
+/** A long, lazy blend: a sky change should drift in, not flash. */
+const TRANSITION_MS = 12000;
+const RESET_MS = 3500;
 
 const COLOR_KEYS = [
   'top',
@@ -234,7 +236,7 @@ export class SkyView {
   reset(): void {
     if (this.index === 0) return;
     this.index = 0;
-    this.blendTo(SKY_THEMES[0]!, 800);
+    this.blendTo(SKY_THEMES[0]!, RESET_MS);
   }
 
   /** A new night starts: pick another moon, unless the last one is still visible. */
@@ -257,7 +259,7 @@ export class SkyView {
       from: 0,
       to: 1,
       duration,
-      ease: easeInOutCubic,
+      ease: easeInOutSine,
       onUpdate: (t) => {
         for (const k of COLOR_KEYS) this.current[k].copy(this.from[k]).lerp(this.to[k], t);
         for (const k of NUMBER_KEYS)

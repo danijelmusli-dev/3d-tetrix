@@ -3,6 +3,7 @@ import {
   Animator,
   easeInOutCubic,
   easeInQuad,
+  easeInOutSine,
   easeOutBack,
   easeOutCubic,
   linear,
@@ -10,7 +11,14 @@ import {
 
 describe('easing', () => {
   it('maps 0 → 0 and 1 → 1', () => {
-    for (const ease of [linear, easeInOutCubic, easeOutCubic, easeInQuad, easeOutBack]) {
+    for (const ease of [
+      linear,
+      easeInOutCubic,
+      easeInOutSine,
+      easeOutCubic,
+      easeInQuad,
+      easeOutBack,
+    ]) {
       // Start may carry float rounding; the end must be exact so tweens land precisely.
       expect(ease(0)).toBeCloseTo(0, 12);
       expect(ease(1)).toBe(1);
@@ -82,5 +90,15 @@ describe('Animator', () => {
     anim.tween({ from: 3, to: 7, duration: 0, onUpdate: (v) => seen.push(v) }, 0);
     anim.update(0);
     expect(seen).toEqual([7]);
+  });
+});
+
+describe('easeInOutSine', () => {
+  it('starts and ends gently and is symmetric', () => {
+    expect(easeInOutSine(0)).toBeCloseTo(0);
+    expect(easeInOutSine(0.5)).toBeCloseTo(0.5);
+    expect(easeInOutSine(1)).toBeCloseTo(1);
+    expect(easeInOutSine(0.1)).toBeLessThan(0.1);
+    expect(easeInOutSine(0.9)).toBeGreaterThan(0.9);
   });
 });
