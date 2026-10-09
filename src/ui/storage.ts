@@ -1,4 +1,11 @@
-import { BOARD_HEIGHT, BOARD_LIMITS, BOARD_SIZE } from '../config';
+import {
+  BOARD_HEIGHT,
+  BOARD_LIMITS,
+  BOARD_SIZE,
+  DEFAULT_SKIN,
+  isSkinId,
+  type SkinId,
+} from '../config';
 
 export interface BoardDims {
   size: number;
@@ -76,4 +83,18 @@ function write(key: string, value: string): void {
   } catch {
     // Private mode or blocked storage: the value just won't persist.
   }
+}
+
+/** Chosen block skin; the default when unset, unknown or unavailable. */
+export function loadSkin(): SkinId {
+  try {
+    const value = localStorage.getItem('tetrix.skin');
+    return isSkinId(value) ? value : DEFAULT_SKIN;
+  } catch {
+    return DEFAULT_SKIN;
+  }
+}
+
+export function saveSkin(skin: SkinId): void {
+  write('tetrix.skin', skin);
 }

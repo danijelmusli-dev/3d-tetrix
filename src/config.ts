@@ -20,6 +20,25 @@ export const PIECE_COLORS = [
   0xb8e05a, // B (2x2x2 box) - lime
 ] as const;
 
+/** Block skins players can pick (see render/skins.ts), with their menu names. */
+export const SKINS = [
+  { id: 'classic', name: 'Classic' },
+  { id: 'candy', name: 'Candy' },
+  { id: 'wood', name: 'Wood' },
+  { id: 'stone', name: 'Stone' },
+  { id: 'glass', name: 'Crystal' },
+  { id: 'slime', name: 'Slime' },
+  { id: 'metal', name: 'Steel' },
+  { id: 'pixel', name: 'Pixel' },
+  { id: 'studs', name: 'Studs' },
+] as const;
+export type SkinId = (typeof SKINS)[number]['id'];
+export const DEFAULT_SKIN: SkinId = 'classic';
+
+export function isSkinId(value: unknown): value is SkinId {
+  return SKINS.some((skin) => skin.id === value);
+}
+
 export const COLORS = {
   slab: 0x52646e,
   cellLines: 0x6d808b,

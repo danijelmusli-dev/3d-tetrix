@@ -1,16 +1,35 @@
 import * as THREE from 'three';
-import { CAMERA } from '../config';
+import { CAMERA, DEFAULT_SKIN, SKINS, type SkinId } from '../config';
 import { PIECE_IDS, PIECES, type PieceId } from '../core/pieces';
-import { cubeGeometry, pieceColor } from './boardView';
+import { pieceColor } from './boardView';
+import { createSkin } from './skins';
 
 const WIDTH = 200;
 const HEIGHT = 140;
 
+type Cells = readonly (readonly [number, number, number])[];
+
+interface Shape {
+  key: string;
+  cells: Cells;
+  colorId: number;
+}
+
+const boundsRadius = (cells: Cells): number => {
+  const box = new THREE.Box3();
+  for (const [x, y, z] of cells) {
+    box.expandByPoint(new THREE.Vector3(x - 0.5, z - 0.5, y - 0.5));
+    box.expandByPoint(new THREE.Vector3(x + 0.5, z + 0.5, y + 0.5));
+  }
+  return box.getBoundingSphere(new THREE.Sphere()).radius;
+};
+
 /**
- * Render each piece's base shape once, from the game camera's angle, into
- * PNG data URLs for the tray. Uses a short-lived offscreen renderer.
+ * Render shapes from the game camera's angle into PNG data URLs, wearing `skinId`,
+ * all at one shared scale (fit to the largest) so a single cube looks small next to
+ * an I. Uses a short-lived offscreen renderer with its own skin textures.
  */
-export function createPieceThumbnails(): Record<PieceId, string> {
+function renderShapes(skinId: SkinId, shapes: readonly Shape[]): Record<string, string> {
   const renderer = new THREE.WebGLRenderer({
     antialias: true,
     alpha: true,
@@ -34,27 +53,19 @@ export function createPieceThumbnails(): Record<PieceId, string> {
     Math.cos(elev) * Math.cos(azim),
   );
 
-  // One shared scale (fit to the largest piece) so a single cube looks small next to an I.
-  const radius = Math.max(
-    ...PIECE_IDS.map((id) => {
-      const box = new THREE.Box3();
-      for (const [x, y, z] of PIECES[id].cells) {
-        box.expandByPoint(new THREE.Vector3(x - 0.5, z - 0.5, y - 0.5));
-        box.expandByPoint(new THREE.Vector3(x + 0.5, z + 0.5, y + 0.5));
-      }
-      return box.getBoundingSphere(new THREE.Sphere()).radius;
-    }),
-  );
+  const radius = Math.max(...shapes.map((shape) => boundsRadius(shape.cells)));
+  const skin = createSkin(skinId);
 
-  const result = {} as Record<PieceId, string>;
-  for (const id of PIECE_IDS) {
+  const result: Record<string, string> = {};
+  for (const { key, cells, colorId } of shapes) {
     const piece = new THREE.Group();
-    const material = new THREE.MeshStandardMaterial({
-      color: pieceColor(PIECES[id].colorId),
-      roughness: 0.55,
-    });
-    for (const [x, y, z] of PIECES[id].cells) {
-      const cube = new THREE.Mesh(cubeGeometry, material);
+    // The skin's material is white; a plain mesh needs its own colour.
+    const material = skin.material.clone() as THREE.MeshStandardMaterial;
+    const color = pieceColor(colorId);
+    skin.recolor?.(color);
+    material.color.copy(color);
+    for (const [x, y, z] of cells) {
+      const cube = new THREE.Mesh(skin.geometry, material);
       cube.position.set(x, z, y); // grid → three (y-up)
       piece.add(cube);
     }
@@ -67,13 +78,38 @@ export function createPieceThumbnails(): Record<PieceId, string> {
     camera.position.copy(dir).multiplyScalar(distance);
     camera.lookAt(0, 0, 0);
     renderer.render(scene, camera);
-    result[id] = renderer.domElement.toDataURL('image/png');
+    result[key] = renderer.domElement.toDataURL('image/png');
 
     scene.remove(piece);
     material.dispose();
   }
 
+  skin.dispose();
   renderer.dispose();
   renderer.forceContextLoss();
   return result;
+}
+
+/** Each piece's base shape, for the tray. */
+export function createPieceThumbnails(skinId: SkinId = DEFAULT_SKIN): Record<PieceId, string> {
+  const shapes = PIECE_IDS.map((id) => ({
+    key: id,
+    cells: PIECES[id].cells,
+    colorId: PIECES[id].colorId,
+  }));
+  return renderShapes(skinId, shapes) as Record<PieceId, string>;
+}
+
+/** One 2-cube preview per skin, for the skin picker. */
+export function createSkinPreviews(): Record<SkinId, string> {
+  const cells: Cells = [
+    [0, 0, 0],
+    [1, 0, 0],
+    [0, 0, 1],
+  ];
+  const previews = {} as Record<SkinId, string>;
+  for (const { id } of SKINS) {
+    previews[id] = renderShapes(id, [{ key: id, cells, colorId: 9 }])[id]!;
+  }
+  return previews;
 }

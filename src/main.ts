@@ -16,7 +16,7 @@ import { GhostView } from './render/ghostView';
 import { animatePlacement } from './render/placeAnimation';
 import { createScene } from './render/scene';
 import { SkyView } from './render/skyView';
-import { createPieceThumbnails } from './render/thumbnails';
+import { createPieceThumbnails, createSkinPreviews } from './render/thumbnails';
 import { AudioControls } from './ui/audioControls';
 import { BoardSettings } from './ui/boardSettings';
 import { ViewControls } from './ui/controls';
@@ -24,14 +24,17 @@ import { ControlsPanel } from './ui/controlsPanel';
 import { createHelp } from './ui/help';
 import { Hud } from './ui/hud';
 import { PieceControls } from './ui/pieceControls';
+import { SkinPicker } from './ui/skinPicker';
 import {
   isValidBoard,
   loadBest,
   loadBoard,
   loadFlag,
+  loadSkin,
   saveBest,
   saveBoard,
   saveFlag,
+  saveSkin,
   type BoardDims,
 } from './ui/storage';
 import { TrayView } from './ui/trayView';
@@ -52,6 +55,8 @@ let dims: BoardDims = isValidBoard(debugDims) ? debugDims : loadBoard();
 
 const game = new Game({ size: dims.size, height: dims.height, seed: debugSeed });
 const board = new BoardView(dims.size, dims.height);
+const skin = loadSkin();
+board.setSkin(skin);
 scene.add(board.group);
 fitShadows(dims.size, dims.height);
 
@@ -76,7 +81,7 @@ function refresh(): void {
 }
 refresh();
 
-const tray = new TrayView(TRAY_SLOTS, createPieceThumbnails(), (slot, e) =>
+const tray = new TrayView(TRAY_SLOTS, createPieceThumbnails(skin), (slot, e) =>
   controller.pick(slot, e),
 );
 const controller = new PieceController({
@@ -230,6 +235,11 @@ const pieceControls = new PieceControls({
   cancel: () => controller.cancel(),
 });
 createHelp();
+new SkinPicker(skin, createSkinPreviews, (id) => {
+  board.setSkin(id);
+  saveSkin(id);
+  tray.setThumbnails(createPieceThumbnails(id));
+});
 new ControlsPanel();
 
 /** A new game requested while a placement animation plays; started when it ends. */

@@ -4,10 +4,12 @@ import type { PieceId } from '../core/pieces';
 export class TrayView {
   readonly el: HTMLElement;
   private readonly slots: HTMLButtonElement[];
+  private lastPieces: readonly (PieceId | null)[] = [];
+  private lastHeld: number | null = null;
 
   constructor(
     slotCount: number,
-    private readonly thumbnails: Record<PieceId, string>,
+    private thumbnails: Record<PieceId, string>,
     onPick: (slot: number, e: PointerEvent) => void,
   ) {
     this.el = document.createElement('div');
@@ -29,7 +31,15 @@ export class TrayView {
     document.body.appendChild(this.el);
   }
 
+  /** Swap the piece pictures (a new block skin) and redraw the slots. */
+  setThumbnails(thumbnails: Record<PieceId, string>): void {
+    this.thumbnails = thumbnails;
+    this.render(this.lastPieces, this.lastHeld);
+  }
+
   render(pieces: readonly (PieceId | null)[], held: number | null): void {
+    this.lastPieces = pieces;
+    this.lastHeld = held;
     this.slots.forEach((b, i) => {
       const id = pieces[i] ?? null;
       b.disabled = id === null;

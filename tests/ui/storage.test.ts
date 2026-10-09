@@ -5,9 +5,11 @@ import {
   loadBest,
   loadBoard,
   loadFlag,
+  loadSkin,
   saveBest,
   saveBoard,
   saveFlag,
+  saveSkin,
 } from '../../src/ui/storage';
 
 function stubStorage(): Map<string, string> {
@@ -84,5 +86,35 @@ describe('best score storage', () => {
     expect(loadBoard()).toEqual(DEFAULT_BOARD);
     expect(() => saveBest(DEFAULT_BOARD, 5)).not.toThrow();
     expect(() => saveBoard(DEFAULT_BOARD)).not.toThrow();
+  });
+});
+
+describe('skin storage', () => {
+  it('round-trips a known skin', () => {
+    stubStorage();
+    saveSkin('wood');
+    expect(loadSkin()).toBe('wood');
+  });
+
+  it('falls back to classic for unknown values', () => {
+    const data = stubStorage();
+    expect(loadSkin()).toBe('classic');
+    for (const bad of ['', 'gold', '__proto__', '1']) {
+      data.set('tetrix.skin', bad);
+      expect(loadSkin()).toBe('classic');
+    }
+  });
+
+  it('falls back when storage throws', () => {
+    vi.stubGlobal('localStorage', {
+      getItem: () => {
+        throw new Error('blocked');
+      },
+      setItem: () => {
+        throw new Error('blocked');
+      },
+    });
+    expect(loadSkin()).toBe('classic');
+    expect(() => saveSkin('metal')).not.toThrow();
   });
 });

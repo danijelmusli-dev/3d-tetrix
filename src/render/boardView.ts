@@ -1,13 +1,12 @@
 import * as THREE from 'three';
-import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
-import { COLORS, PIECE_COLORS } from '../config';
+import { COLORS, DEFAULT_SKIN, PIECE_COLORS, type SkinId } from '../config';
 import type { Grid } from '../core/grid';
+import { createSkin, cubeGeometry, type Skin } from './skins';
 
 export const SLAB_THICKNESS = 0.3;
 export const SLAB_MARGIN = 0.4;
 
-/** Shared beveled unit cube used by every cube on the board. */
-export const cubeGeometry = new RoundedBoxGeometry(1, 1, 1, 2, 0.025);
+export { cubeGeometry };
 
 /** Snap a (possibly beveled, diagonal) normal to its strongest axis. */
 function dominantAxis(n: THREE.Vector3): THREE.Vector3 {
@@ -50,6 +49,7 @@ export class BoardView {
   /** Slab, cell lines and cubes; rebuilt on resize (other children, like the ghost, stay). */
   private readonly fixtures = new THREE.Group();
   private cubes!: THREE.InstancedMesh;
+  private skin: Skin = createSkin(DEFAULT_SKIN);
 
   constructor(
     public size: number,
@@ -63,16 +63,33 @@ export class BoardView {
   resize(size: number, height: number): void {
     if (size === this.size && height === this.height) return;
     this.fixtures.traverse((object) => {
+      if (object instanceof THREE.InstancedMesh) {
+        // Geometry and material belong to the skin; this frees the per-instance buffers.
+        object.dispose();
+        return;
+      }
       if (!(object instanceof THREE.Mesh || object instanceof THREE.LineSegments)) return;
-      if (object.geometry !== cubeGeometry) object.geometry.dispose();
+      object.geometry.dispose();
       (object.material as THREE.Material).dispose();
-      // Frees the per-instance matrix and color buffers.
-      if (object instanceof THREE.InstancedMesh) object.dispose();
     });
     this.fixtures.clear();
     this.size = size;
     this.height = height;
     this.build();
+  }
+
+  /** Switch how cubes look; the board keeps its state and the old skin is freed. */
+  setSkin(id: SkinId): void {
+    if (id === this.skin.id) return;
+    const old = this.skin;
+    this.skin = createSkin(id);
+    this.cubes.geometry = this.skin.geometry;
+    this.cubes.material = this.skin.material;
+    old.dispose();
+  }
+
+  get skinId(): SkinId {
+    return this.skin.id;
   }
 
   private build(): void {
@@ -112,7 +129,9 @@ export class BoardView {
         scale.set(s, s, s),
       );
       this.cubes.setMatrixAt(i, matrix);
-      color.copy(pieceColor(cube.colorId)).lerp(FLASH_COLOR, cube.flash ?? 0);
+      color.copy(pieceColor(cube.colorId));
+      this.skin.recolor?.(color);
+      color.lerp(FLASH_COLOR, cube.flash ?? 0);
       this.cubes.setColorAt(i, color);
       i++;
     }
@@ -156,11 +175,7 @@ export class BoardView {
 
   private createCubes(): THREE.InstancedMesh {
     const capacity = this.size * this.size * this.height;
-    const mesh = new THREE.InstancedMesh(
-      cubeGeometry,
-      new THREE.MeshStandardMaterial({ roughness: 0.55 }),
-      capacity,
-    );
+    const mesh = new THREE.InstancedMesh(this.skin.geometry, this.skin.material, capacity);
     mesh.count = 0;
     mesh.castShadow = true;
     mesh.receiveShadow = true;
