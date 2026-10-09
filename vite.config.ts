@@ -3,7 +3,7 @@ import { defineConfig } from 'vitest/config';
 /** Locks the built page to its own files. Build only: the dev server needs inline scripts and a websocket. */
 const CSP =
   "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; " +
-  "img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'none'";
+  "img-src 'self' data:; font-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'none'";
 
 export default defineConfig({
   base: './',
