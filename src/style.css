@@ -1,33 +1,28 @@
 /*
- * Soft Clay: chunky, rounded, tactile. Panels are warm clay with a thick
- * bottom lip, buttons are pressable pebbles, accents are coral and mint.
+ * Graphite: quiet dark panels, hairline borders, one teal accent. The sky and the
+ * blocks carry the colour; the interface stays out of their way.
  */
 :root {
-  --clay: #f6e7d4;
-  --clay-hi: #fff7ec;
-  --clay-lo: #dcc2a2;
-  --clay-deep: #c9a984;
-  --ink: #5b4333;
-  --ink-soft: #8c6f5a;
-  --coral: #ff8a65;
-  --coral-lo: #e0623d;
-  --mint: #7fd6b0;
-  --mint-lo: #4fb68b;
-  --sun: #ffc857;
-  --scrim: rgb(70 40 30 / 45%);
-  --glow: rgb(80 45 30 / 28%);
+  --panel: rgb(17 19 28 / 88%);
+  --panel-hi: rgb(32 36 50 / 94%);
+  --well: rgb(255 255 255 / 5%);
+  --line: rgb(255 255 255 / 10%);
+  --line-hi: rgb(255 255 255 / 22%);
+  --text: #eef1f7;
+  --text-2: #a3acc0;
+  --accent: #5eead4;
+  --accent-ink: #04231d;
+  --accent-wash: rgb(94 234 212 / 16%);
+  --scrim: rgb(6 8 16 / 55%);
 
-  --font: 'Fredoka', system-ui, sans-serif;
+  --font: 'Lexend', system-ui, sans-serif;
 
-  --radius-s: 12px;
-  --radius-m: 18px;
-  --radius-l: 26px;
+  --radius-s: 8px;
+  --radius-m: 12px;
+  --radius-l: 18px;
 
-  /* A raised clay slab: highlight on top, thick lip below, soft shadow under. */
-  --raised: inset 0 2px 0 var(--clay-hi), 0 5px 0 var(--clay-lo), 0 12px 22px var(--glow);
-  --raised-lg: inset 0 3px 0 var(--clay-hi), 0 8px 0 var(--clay-lo), 0 20px 36px var(--glow);
-  /* A pressed-in well. */
-  --sunken: inset 0 3px 6px rgb(120 80 50 / 28%), inset 0 -2px 0 var(--clay-hi);
+  --shadow: 0 1px 0 rgb(255 255 255 / 7%) inset, 0 10px 30px rgb(4 6 14 / 38%);
+  --shadow-lg: 0 1px 0 rgb(255 255 255 / 7%) inset, 0 24px 60px rgb(4 6 14 / 50%);
 }
 
 html,
@@ -35,9 +30,10 @@ body {
   margin: 0;
   height: 100%;
   overflow: hidden;
-  background: #3a3a3a;
+  background: #101218;
   font-family: var(--font);
-  color: var(--ink);
+  font-weight: 500;
+  color: var(--text);
 }
 
 body {
@@ -57,14 +53,21 @@ body {
 button,
 select {
   font-family: inherit;
+  font-weight: 500;
 }
 
-button:focus-visible {
-  outline: 3px solid var(--coral);
-  outline-offset: 3px;
+button:focus-visible,
+select:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
-/* ---------- Pebble buttons ---------- */
+::selection {
+  background: var(--accent-wash);
+  color: var(--text);
+}
+
+/* ---------- Buttons ---------- */
 
 .spin-controls button,
 .piece-controls button,
@@ -72,17 +75,18 @@ button:focus-visible {
 .help-button,
 .board-button,
 .skin-button {
-  border: 0;
-  background: var(--clay);
-  color: var(--ink);
-  box-shadow: var(--raised);
-  font-weight: 600;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  backdrop-filter: blur(14px);
+  color: var(--text);
+  box-shadow: var(--shadow);
   cursor: pointer;
   transition:
-    transform 110ms,
-    box-shadow 110ms,
-    background 110ms,
-    opacity 110ms;
+    transform 140ms cubic-bezier(0.22, 1, 0.36, 1),
+    background 140ms,
+    border-color 140ms,
+    color 140ms,
+    opacity 140ms;
 }
 
 .spin-controls button:hover,
@@ -91,7 +95,8 @@ button:focus-visible {
 .help-button:hover,
 .board-button:hover,
 .skin-button:hover {
-  background: var(--clay-hi);
+  background: var(--panel-hi);
+  border-color: var(--line-hi);
 }
 
 .spin-controls button:active,
@@ -100,22 +105,15 @@ button:focus-visible {
 .help-button:active,
 .board-button:active,
 .skin-button:active {
-  transform: translateY(4px);
-  box-shadow:
-    inset 0 2px 0 var(--clay-hi),
-    0 1px 0 var(--clay-lo),
-    0 4px 8px var(--glow);
+  transform: scale(0.95);
 }
 
-/* "On" buttons turn coral. */
+/* "On" buttons take the accent. */
 .spin-controls button[aria-pressed='true'],
 .piece-controls button.slide[aria-pressed='true'] {
-  background: var(--coral);
-  color: #fff;
-  box-shadow:
-    inset 0 2px 0 rgb(255 255 255 / 45%),
-    0 5px 0 var(--coral-lo),
-    0 12px 22px var(--glow);
+  background: var(--accent-wash);
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
 /* ---------- Key hints (beside, never inside, a button) ---------- */
@@ -123,7 +121,7 @@ button:focus-visible {
 .ctl {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 7px;
 }
 
 .ctl[hidden] {
@@ -138,18 +136,19 @@ button:focus-visible {
 .key-hint,
 .control-list kbd {
   padding: 1px 6px;
-  border-radius: 6px;
-  background: var(--clay-hi);
-  border-bottom: 2px solid var(--clay-deep);
-  color: var(--ink-soft);
-  font: 600 13px/1.4 var(--font);
+  border: 1px solid var(--line-hi);
+  border-radius: 5px;
+  background: var(--well);
+  color: var(--text-2);
+  font: 500 12px/1.5 var(--font);
   text-align: center;
   white-space: nowrap;
 }
 
 .key-hint {
   min-width: 14px;
-  box-shadow: 0 2px 6px var(--glow);
+  background: var(--panel);
+  color: #e3e8f4;
 }
 
 /* Touch screens have no keyboard: drop the key hints. */
@@ -166,14 +165,14 @@ button:focus-visible {
   right: 16px;
   bottom: 16px;
   display: flex;
-  gap: 14px;
+  gap: 12px;
 }
 
 .spin-controls button {
-  width: 68px;
-  height: 68px;
+  width: 64px;
+  height: 64px;
   border-radius: var(--radius-l);
-  font-size: 30px;
+  font-size: 28px;
   line-height: 1;
 }
 
@@ -185,26 +184,28 @@ button:focus-visible {
   bottom: 16px;
   transform: translateX(-50%);
   display: flex;
-  gap: 12px;
-  padding: 12px;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid var(--line);
   border-radius: var(--radius-l);
-  background: var(--clay);
-  box-shadow: var(--raised-lg);
+  background: var(--panel);
+  backdrop-filter: blur(14px);
+  box-shadow: var(--shadow-lg);
 }
 
 .tray-slot {
   width: 112px;
   height: 80px;
   padding: 4px;
-  border: 3px solid transparent;
+  border: 1px solid var(--line);
   border-radius: var(--radius-m);
-  background: var(--clay-lo);
-  box-shadow: var(--sunken);
+  background: var(--well);
   cursor: grab;
   transition:
-    transform 120ms,
-    border-color 120ms,
-    opacity 120ms;
+    transform 160ms cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 140ms,
+    background 140ms,
+    opacity 140ms;
 }
 
 .tray-slot img {
@@ -216,24 +217,27 @@ button:focus-visible {
 
 .tray-slot:hover:not(:disabled) {
   transform: translateY(-3px);
+  border-color: var(--line-hi);
+  background: rgb(255 255 255 / 9%);
 }
 
 .tray-slot.held {
-  border-color: var(--coral);
-  opacity: 0.6;
+  border-color: var(--accent);
+  background: var(--accent-wash);
+  opacity: 0.7;
   cursor: grabbing;
 }
 
 .tray-slot:disabled {
   cursor: default;
-  opacity: 0.35;
+  opacity: 0.3;
 }
 
 /* ---------- Score ---------- */
 
 .hud-score {
   position: fixed;
-  top: 10px;
+  top: clamp(22px, 6vh, 64px);
   left: 50%;
   transform: translateX(-50%);
   display: flex;
@@ -242,40 +246,40 @@ button:focus-visible {
   color: #fff;
   /* No panel: the number sits on the sky like a title, with a soft shadow to stay readable. */
   text-shadow:
-    0 2px 3px rgb(40 30 60 / 35%),
-    0 6px 26px rgb(40 30 60 / 40%);
+    0 2px 4px rgb(8 12 28 / 40%),
+    0 8px 40px rgb(8 12 28 / 60%);
   pointer-events: none;
 }
 
 .hud-label {
-  font-size: 14px;
-  font-weight: 600;
-  letter-spacing: 0.34em;
+  font-size: clamp(12px, 1.7vh, 15px);
+  letter-spacing: 0.4em;
   text-transform: uppercase;
-  padding-left: 0.34em;
-  opacity: 0.85;
+  padding-left: 0.4em;
+  opacity: 0.8;
 }
 
 .hud-value {
-  font-size: 84px;
-  font-weight: 700;
+  margin-top: 0.1em;
+  font-size: clamp(76px, 16vh, 176px);
+  font-weight: 500;
   line-height: 1;
+  letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
 }
 
 .hud-best {
   min-height: 1em;
-  margin-top: 4px;
-  font-size: 15px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  opacity: 0.8;
+  margin-top: 0.4em;
+  font-size: clamp(12px, 1.8vh, 16px);
+  letter-spacing: 0.12em;
+  opacity: 0.75;
   font-variant-numeric: tabular-nums;
 }
 
 .hud-popups {
   position: fixed;
-  top: 150px;
+  top: clamp(240px, 34vh, 360px);
   left: 50%;
   transform: translateX(-50%);
   pointer-events: none;
@@ -285,44 +289,45 @@ button:focus-visible {
   display: flex;
   flex-direction: column;
   align-items: center;
-  animation: popup-rise 1100ms ease-out forwards;
+  gap: 6px;
+  animation: popup-rise 1100ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
 .hud-popup-points {
-  font-size: 36px;
-  font-weight: 700;
-  color: var(--coral);
-  -webkit-text-stroke: 7px var(--clay-hi);
-  paint-order: stroke fill;
-  text-shadow: 0 4px 0 var(--clay-lo);
+  font-size: 34px;
+  color: #fff;
+  letter-spacing: -0.01em;
+  text-shadow:
+    0 1px 2px rgb(8 12 28 / 55%),
+    0 6px 28px rgb(8 12 28 / 55%);
 }
 
 .hud-popup-label {
-  padding: 2px 12px;
+  padding: 3px 12px;
   border-radius: 999px;
-  background: var(--mint);
-  box-shadow: 0 3px 0 var(--mint-lo);
-  font-size: 14px;
-  font-weight: 700;
-  color: #fff;
+  background: var(--accent);
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--accent-ink);
 }
 
 @keyframes popup-rise {
   0% {
     opacity: 0;
-    transform: translateY(14px) scale(0.8);
+    transform: translateY(12px) scale(0.92);
   }
   15% {
     opacity: 1;
-    transform: translateY(0) scale(1.1);
+    transform: translateY(0) scale(1);
   }
   70% {
     opacity: 1;
-    transform: translateY(-14px) scale(1);
+    transform: translateY(-12px) scale(1);
   }
   100% {
     opacity: 0;
-    transform: translateY(-34px) scale(1);
+    transform: translateY(-28px) scale(1);
   }
 }
 
@@ -340,7 +345,7 @@ button:focus-visible {
   display: grid;
   place-items: center;
   background: var(--scrim);
-  backdrop-filter: blur(3px);
+  backdrop-filter: blur(4px);
 }
 
 .game-over[hidden] {
@@ -348,79 +353,70 @@ button:focus-visible {
 }
 
 .game-over-card {
-  min-width: 270px;
-  padding: 30px 38px 26px;
-  border-radius: 32px;
-  background: var(--clay);
-  box-shadow: var(--raised-lg);
+  min-width: 300px;
+  padding: 34px 44px 28px;
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  background: var(--panel);
+  box-shadow: var(--shadow-lg);
   text-align: center;
 }
 
 .game-over-card h2 {
-  margin: 0 0 16px;
-  font-size: 28px;
-  font-weight: 700;
+  margin: 0 0 22px;
+  font-size: 22px;
+  letter-spacing: 0.02em;
 }
 
 .game-over-label {
   margin: 0;
   font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.16em;
+  letter-spacing: 0.22em;
   text-transform: uppercase;
-  color: var(--ink-soft);
+  color: var(--text-2);
 }
 
 .game-over-score {
-  margin: 4px 0 22px;
-  font-size: 52px;
-  font-weight: 700;
-  line-height: 1.1;
+  margin: 6px 0 24px;
+  font-size: 68px;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
-  color: var(--coral-lo);
 }
 
 .game-over-best {
-  margin: -14px 0 18px;
-  font-weight: 700;
-  color: var(--mint-lo);
+  margin: -16px 0 20px;
+  font-size: 14px;
+  letter-spacing: 0.04em;
+  color: var(--accent);
 }
 
-/* Primary action: a coral pebble. */
+/* Primary action: solid accent. */
 .game-over-button,
 .board-start {
   border: 0;
   border-radius: var(--radius-m);
-  background: var(--coral);
-  color: #fff;
-  font-weight: 700;
+  background: var(--accent);
+  color: var(--accent-ink);
   cursor: pointer;
-  box-shadow:
-    inset 0 2px 0 rgb(255 255 255 / 45%),
-    0 5px 0 var(--coral-lo),
-    0 12px 22px var(--glow);
   transition:
-    transform 110ms,
-    box-shadow 110ms;
+    transform 140ms cubic-bezier(0.22, 1, 0.36, 1),
+    filter 140ms;
 }
 
 .game-over-button {
-  padding: 12px 32px;
-  font-size: 18px;
+  padding: 13px 36px;
+  font-size: 16px;
 }
 
 .game-over-button:hover,
 .board-start:hover {
-  filter: brightness(1.06);
+  filter: brightness(1.08);
 }
 
 .game-over-button:active,
 .board-start:active {
-  transform: translateY(4px);
-  box-shadow:
-    inset 0 2px 0 rgb(255 255 255 / 45%),
-    0 1px 0 var(--coral-lo),
-    0 4px 8px var(--glow);
+  transform: scale(0.97);
 }
 
 .game-over-link {
@@ -428,11 +424,15 @@ button:focus-visible {
   margin: 18px auto 0;
   border: 0;
   background: none;
-  color: var(--ink-soft);
+  color: var(--text-2);
   font-size: 14px;
-  font-weight: 600;
   text-decoration: underline;
+  text-underline-offset: 3px;
   cursor: pointer;
+}
+
+.game-over-link:hover {
+  color: var(--text);
 }
 
 /* ---------- Held-piece buttons ---------- */
@@ -447,11 +447,13 @@ button:focus-visible {
   transform: translateY(-50%);
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding: 10px;
-  border-radius: 32px;
-  background: var(--clay);
-  box-shadow: var(--raised);
+  gap: 8px;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  background: var(--panel);
+  backdrop-filter: blur(14px);
+  box-shadow: var(--shadow);
   visibility: hidden;
 }
 
@@ -460,31 +462,32 @@ button:focus-visible {
 }
 
 .piece-controls button {
-  min-width: 62px;
-  height: 62px;
+  min-width: 58px;
+  height: 58px;
   padding: 0 12px;
+  border-color: transparent;
   border-radius: var(--radius-l);
-  font-size: 26px;
+  background: var(--well);
+  box-shadow: none;
+  backdrop-filter: none;
+  font-size: 24px;
   line-height: 1;
-  background: var(--clay-hi);
 }
 
 .piece-controls button.slide {
-  font-size: 18px;
-  font-weight: 700;
+  font-size: 16px;
 }
 
-/* ---------- Round corner buttons ---------- */
+/* ---------- Corner buttons ---------- */
 
 .help-button {
   position: fixed;
   top: 16px;
   right: 16px;
-  width: 54px;
-  height: 54px;
-  border-radius: 50%;
-  font-size: 26px;
-  font-weight: 700;
+  width: 52px;
+  height: 52px;
+  border-radius: var(--radius-m);
+  font-size: 22px;
 }
 
 .audio-controls {
@@ -492,7 +495,7 @@ button:focus-visible {
   top: 16px;
   left: 16px;
   display: flex;
-  gap: 14px;
+  gap: 12px;
 }
 
 /* Hint under each audio button. */
@@ -503,25 +506,26 @@ button:focus-visible {
 .audio-controls button {
   display: grid;
   place-items: center;
-  width: 54px;
-  height: 54px;
-  border-radius: 50%;
-  font-size: 26px;
+  width: 52px;
+  height: 52px;
+  border-radius: var(--radius-m);
+  font-size: 22px;
 }
 
 .audio-controls button.off {
   opacity: 0.5;
-  color: var(--ink-soft);
+  color: var(--text-2);
 }
 
 .board-button {
   position: fixed;
   top: 16px;
   right: 80px;
-  height: 54px;
+  height: 52px;
   padding: 0 20px;
-  border-radius: 27px;
-  font-size: 18px;
+  border-radius: var(--radius-m);
+  font-size: 16px;
+  letter-spacing: 0.02em;
   font-variant-numeric: tabular-nums;
 }
 
@@ -530,10 +534,11 @@ button:focus-visible {
   /* In the top row, right after the two sound buttons. */
   top: 16px;
   left: 152px;
-  height: 54px;
-  padding: 0 24px;
-  border-radius: 27px;
-  font-size: 18px;
+  height: 52px;
+  padding: 0 22px;
+  border-radius: var(--radius-m);
+  font-size: 16px;
+  letter-spacing: 0.02em;
 }
 
 /* ---------- Floating panels ---------- */
@@ -542,43 +547,45 @@ button:focus-visible {
 .board-panel,
 .skin-panel {
   position: fixed;
+  border: 1px solid var(--line);
   border-radius: var(--radius-l);
-  background: var(--clay);
-  color: var(--ink);
-  box-shadow: var(--raised-lg);
+  background: var(--panel);
+  backdrop-filter: blur(18px);
+  color: var(--text);
+  box-shadow: var(--shadow-lg);
   z-index: 10;
 }
 
 .help-panel {
-  top: 82px;
+  top: 80px;
   right: 16px;
-  width: min(360px, calc(100vw - 32px));
+  width: min(380px, calc(100vw - 32px));
   max-height: calc(100vh - 100px);
   overflow: auto;
-  padding: 20px 22px;
+  padding: 22px 24px;
   font-size: 14px;
-  line-height: 1.45;
-  scrollbar-color: var(--clay-deep) transparent;
+  line-height: 1.55;
+  scrollbar-color: var(--line-hi) transparent;
 }
 
 .help-panel h2,
 .board-panel h2,
 .skin-panel h2 {
-  margin: 0 0 10px;
-  font-size: 20px;
-  font-weight: 700;
+  margin: 0 0 14px;
+  font-size: 17px;
+  letter-spacing: 0.01em;
 }
 
 .help-panel p {
   margin: 0 0 12px;
-  color: var(--ink-soft);
+  color: var(--text-2);
 }
 
 .board-panel {
-  top: 82px;
+  top: 80px;
   right: 16px;
-  width: min(270px, calc(100vw - 32px));
-  padding: 20px 22px;
+  width: min(290px, calc(100vw - 32px));
+  padding: 22px 24px;
   z-index: 11;
 }
 
@@ -587,46 +594,50 @@ button:focus-visible {
   align-items: center;
   justify-content: space-between;
   margin-bottom: 12px;
-  font-size: 15px;
-  font-weight: 600;
+  font-size: 14px;
+  color: var(--text-2);
 }
 
 .board-field select {
-  min-width: 76px;
-  padding: 7px 10px;
-  border: 0;
+  min-width: 84px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
   border-radius: var(--radius-s);
-  background: var(--clay-lo);
-  box-shadow: var(--sunken);
-  color: var(--ink);
-  font-size: 16px;
-  font-weight: 600;
+  background: var(--well);
+  color: var(--text);
+  font-size: 15px;
+}
+
+.board-field select option {
+  background: #171a26;
+  color: var(--text);
 }
 
 .board-panel p {
-  margin: 4px 0 16px;
+  margin: 4px 0 18px;
   font-size: 13px;
-  color: var(--ink-soft);
+  line-height: 1.5;
+  color: var(--text-2);
 }
 
 .board-start {
   width: 100%;
-  padding: 11px;
-  font-size: 16px;
+  padding: 12px;
+  font-size: 15px;
 }
 
 .skin-panel {
-  top: 82px;
+  top: 80px;
   left: 16px;
-  width: min(340px, calc(100vw - 32px));
-  padding: 18px;
+  width: min(360px, calc(100vw - 32px));
+  padding: 20px;
   z-index: 11;
 }
 
 .skin-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
+  gap: 8px;
 }
 
 .skin-card {
@@ -634,22 +645,25 @@ button:focus-visible {
   flex-direction: column;
   align-items: center;
   gap: 2px;
-  padding: 6px 4px 8px;
-  border: 3px solid transparent;
+  padding: 6px 4px 9px;
+  border: 1px solid var(--line);
   border-radius: var(--radius-m);
-  background: var(--clay-lo);
-  box-shadow: var(--sunken);
-  color: var(--ink);
-  font-size: 13px;
-  font-weight: 600;
+  background: var(--well);
+  color: var(--text-2);
+  font-size: 12px;
+  letter-spacing: 0.03em;
   cursor: pointer;
   transition:
-    transform 110ms,
-    border-color 110ms;
+    transform 140ms cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 140ms,
+    background 140ms,
+    color 140ms;
 }
 
 .skin-card:hover {
   transform: translateY(-2px);
+  border-color: var(--line-hi);
+  color: var(--text);
 }
 
 .skin-card img {
@@ -660,8 +674,9 @@ button:focus-visible {
 }
 
 .skin-card[aria-pressed='true'] {
-  border-color: var(--coral);
-  background: var(--clay-hi);
+  border-color: var(--accent);
+  background: var(--accent-wash);
+  color: var(--accent);
 }
 
 /* ---------- Controls window ---------- */
@@ -672,14 +687,16 @@ button:focus-visible {
   top: 50%;
   right: 16px;
   transform: translateY(-50%);
-  width: 256px;
+  width: 262px;
   /* Clear of the corner buttons above and the view buttons below. */
   max-height: calc(100vh - 300px);
   display: flex;
   flex-direction: column;
+  border: 1px solid var(--line);
   border-radius: var(--radius-l);
-  background: var(--clay);
-  box-shadow: var(--raised);
+  background: var(--panel);
+  backdrop-filter: blur(14px);
+  box-shadow: var(--shadow);
 }
 
 .controls-panel[hidden] {
@@ -690,35 +707,35 @@ button:focus-visible {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 10px 2px 16px;
+  padding: 12px 12px 2px 18px;
 }
 
 .controls-panel-header h2 {
   margin: 0;
-  font-size: 16px;
-  font-weight: 700;
+  font-size: 14px;
+  letter-spacing: 0.02em;
 }
 
 .controls-panel-close {
   width: 28px;
   height: 28px;
   border: 0;
-  border-radius: 10px;
+  border-radius: var(--radius-s);
   background: transparent;
-  color: var(--ink-soft);
-  font-size: 16px;
+  color: var(--text-2);
+  font-size: 15px;
   cursor: pointer;
 }
 
 .controls-panel-close:hover {
-  background: var(--clay-lo);
-  color: var(--ink);
+  background: var(--well);
+  color: var(--text);
 }
 
 .controls-panel-body {
   overflow-y: auto;
-  padding: 0 16px 14px;
-  scrollbar-color: var(--clay-deep) transparent;
+  padding: 0 18px 16px;
+  scrollbar-color: var(--line-hi) transparent;
 }
 
 .controls-tab {
@@ -726,17 +743,23 @@ button:focus-visible {
   top: 50%;
   right: 0;
   padding: 16px 9px;
-  border: 0;
-  border-radius: 14px 0 0 14px;
-  background: var(--clay);
-  box-shadow: var(--raised);
-  color: var(--ink);
-  font-size: 13px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
+  border: 1px solid var(--line);
+  border-right: 0;
+  border-radius: var(--radius-m) 0 0 var(--radius-m);
+  background: var(--panel);
+  backdrop-filter: blur(14px);
+  box-shadow: var(--shadow);
+  color: var(--text);
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
   writing-mode: vertical-rl;
   transform: translateY(-50%) rotate(180deg);
   cursor: pointer;
+}
+
+.controls-tab:hover {
+  background: var(--panel-hi);
 }
 
 .controls-tab[hidden] {
@@ -746,23 +769,22 @@ button:focus-visible {
 /* Shared control list (side panel and "?" help). */
 .controls-panel h3,
 .help-panel h3 {
-  margin: 12px 0 4px;
+  margin: 16px 0 6px;
   font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: var(--coral-lo);
+  color: var(--accent);
 }
 
 .control-list {
   display: grid;
   /* Fixed key column so descriptions line up across groups. */
   grid-template-columns: 92px 1fr;
-  gap: 5px 10px;
+  gap: 6px 10px;
   align-items: center;
   margin: 0;
   font-size: 13px;
-  line-height: 1.3;
+  line-height: 1.35;
 }
 
 .control-list dt {
@@ -774,11 +796,11 @@ button:focus-visible {
 
 .control-list dd {
   margin: 0;
-  color: var(--ink-soft);
+  color: var(--text-2);
 }
 
 .control-list kbd {
-  color: var(--ink);
+  color: var(--text);
   font-size: 11px;
 }
 
@@ -792,7 +814,7 @@ button:focus-visible {
   }
 
   .hud-score {
-    top: 8px;
+    top: 64px;
   }
 
   .hud-label {
@@ -800,32 +822,36 @@ button:focus-visible {
   }
 
   .hud-value {
-    font-size: 52px;
+    font-size: 72px;
   }
 
   .hud-best {
     font-size: 12px;
   }
 
+  .hud-popups {
+    top: 220px;
+  }
+
   .help-button {
     top: 10px;
     right: 10px;
-    width: 46px;
-    height: 46px;
-    font-size: 22px;
+    width: 44px;
+    height: 44px;
+    font-size: 19px;
   }
 
   .board-button {
     top: 10px;
-    right: 64px;
-    height: 46px;
+    right: 62px;
+    height: 44px;
     padding: 0 14px;
-    font-size: 15px;
+    font-size: 14px;
   }
 
   .help-panel,
   .board-panel {
-    top: 66px;
+    top: 64px;
     right: 10px;
   }
 
@@ -836,21 +862,21 @@ button:focus-visible {
   }
 
   .audio-controls button {
-    width: 46px;
-    height: 46px;
-    font-size: 22px;
+    width: 44px;
+    height: 44px;
+    font-size: 19px;
   }
 
   .skin-button {
-    top: 68px;
-    left: 10px;
-    height: 42px;
-    padding: 0 18px;
-    font-size: 15px;
+    top: 10px;
+    left: 108px;
+    height: 44px;
+    padding: 0 14px;
+    font-size: 14px;
   }
 
   .skin-panel {
-    top: 118px;
+    top: 64px;
     left: 10px;
   }
 
@@ -876,22 +902,22 @@ button:focus-visible {
   }
 
   .piece-controls button {
-    min-width: 50px;
-    height: 50px;
+    min-width: 48px;
+    height: 48px;
     padding: 0 8px;
-    font-size: 22px;
+    font-size: 20px;
   }
 
-  /* Below the score panel, in the empty headroom above the board. */
+  /* Above the held-piece row, in the empty space beside the board. */
   .spin-controls {
-    top: 84px;
     right: 10px;
-    bottom: auto;
+    bottom: 168px;
+    gap: 8px;
   }
 
   .spin-controls button {
-    width: 56px;
-    height: 56px;
-    font-size: 26px;
+    width: 52px;
+    height: 52px;
+    font-size: 24px;
   }
 }
