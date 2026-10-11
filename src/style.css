@@ -108,6 +108,29 @@ select:focus-visible {
   transform: scale(0.95);
 }
 
+/* Settings buttons stay quiet until hovered: the tray and the board are the focus. */
+.audio-controls button,
+.help-button,
+.board-button,
+.skin-button {
+  background: rgb(17 19 28 / 58%);
+  color: var(--text-2);
+  box-shadow: none;
+}
+
+.audio-controls button:hover,
+.help-button:hover,
+.board-button:hover,
+.skin-button:hover {
+  background: var(--panel);
+  color: var(--text);
+}
+
+.audio-controls button.off {
+  opacity: 1;
+  color: rgb(163 172 192 / 45%);
+}
+
 /* "On" buttons take the accent. */
 .spin-controls button[aria-pressed='true'],
 .piece-controls button.slide[aria-pressed='true'] {
@@ -128,9 +151,30 @@ select:focus-visible {
   display: none;
 }
 
-/* View buttons sit in a row: hint above each button. */
+/* View buttons sit in a row: hint above, caption below each button. */
 .spin-controls .ctl {
-  flex-direction: column-reverse;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ctl-caption {
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  color: #fff;
+  text-shadow:
+    0 1px 2px rgb(8 12 28 / 75%),
+    0 2px 10px rgb(8 12 28 / 55%);
+}
+
+.icon {
+  display: block;
+  width: 26px;
+  height: 26px;
+}
+
+.piece-controls .icon {
+  width: 24px;
+  height: 24px;
 }
 
 .key-hint,
@@ -171,9 +215,9 @@ select:focus-visible {
 .spin-controls button {
   width: 64px;
   height: 64px;
+  display: grid;
+  place-items: center;
   border-radius: var(--radius-l);
-  font-size: 28px;
-  line-height: 1;
 }
 
 /* ---------- Tray ---------- */
@@ -194,8 +238,8 @@ select:focus-visible {
 }
 
 .tray-slot {
-  width: 112px;
-  height: 80px;
+  width: 128px;
+  height: 92px;
   padding: 4px;
   border: 1px solid var(--line);
   border-radius: var(--radius-m);
@@ -246,13 +290,27 @@ select:focus-visible {
   color: #fff;
   /* No panel: the number sits on the sky like a title, with a soft shadow to stay readable. */
   text-shadow:
-    0 2px 4px rgb(8 12 28 / 40%),
-    0 8px 40px rgb(8 12 28 / 60%);
+    0 2px 6px rgb(8 12 28 / 45%),
+    0 10px 44px rgb(8 12 28 / 65%);
   pointer-events: none;
 }
 
+/* A soft pool of shade keeps the white number above 3:1 on pale skies, with no visible panel. */
+.hud-score::before {
+  content: '';
+  position: absolute;
+  inset: -30% -110% -22%;
+  z-index: -1;
+  background: radial-gradient(
+    closest-side,
+    rgb(10 14 34 / 30%),
+    rgb(10 14 34 / 12%) 55%,
+    transparent
+  );
+}
+
 .hud-label {
-  font-size: clamp(12px, 1.7vh, 15px);
+  font-size: clamp(13px, 2vh, 18px);
   letter-spacing: 0.4em;
   text-transform: uppercase;
   padding-left: 0.4em;
@@ -470,8 +528,8 @@ select:focus-visible {
   background: var(--well);
   box-shadow: none;
   backdrop-filter: none;
-  font-size: 24px;
-  line-height: 1;
+  display: grid;
+  place-items: center;
 }
 
 .piece-controls button.slide {
@@ -509,12 +567,6 @@ select:focus-visible {
   width: 52px;
   height: 52px;
   border-radius: var(--radius-m);
-  font-size: 22px;
-}
-
-.audio-controls button.off {
-  opacity: 0.5;
-  color: var(--text-2);
 }
 
 .board-button {
@@ -687,9 +739,9 @@ select:focus-visible {
   top: 50%;
   right: 16px;
   transform: translateY(-50%);
-  width: 262px;
+  width: 296px;
   /* Clear of the corner buttons above and the view buttons below. */
-  max-height: calc(100vh - 300px);
+  max-height: calc(100vh - 340px);
   display: flex;
   flex-direction: column;
   border: 1px solid var(--line);
@@ -779,7 +831,7 @@ select:focus-visible {
 .control-list {
   display: grid;
   /* Fixed key column so descriptions line up across groups. */
-  grid-template-columns: 92px 1fr;
+  grid-template-columns: 124px 1fr;
   gap: 6px 10px;
   align-items: center;
   margin: 0;
@@ -791,7 +843,7 @@ select:focus-visible {
   display: flex;
   flex-wrap: wrap;
   gap: 3px;
-  max-width: 92px;
+  max-width: 124px;
 }
 
 .control-list dd {
@@ -958,7 +1010,11 @@ select:focus-visible {
   .audio-controls button {
     width: 44px;
     height: 44px;
-    font-size: 19px;
+  }
+
+  .audio-controls .icon {
+    width: 22px;
+    height: 22px;
   }
 
   .skin-button {
@@ -981,8 +1037,8 @@ select:focus-visible {
   }
 
   .tray-slot {
-    width: 84px;
-    height: 62px;
+    width: 88px;
+    height: 66px;
   }
 
   .piece-controls {
@@ -999,19 +1055,27 @@ select:focus-visible {
     min-width: 48px;
     height: 48px;
     padding: 0 8px;
-    font-size: 20px;
+  }
+
+  .piece-controls .icon {
+    width: 22px;
+    height: 22px;
   }
 
   /* Above the held-piece row, in the empty space beside the board. */
   .spin-controls {
     right: 10px;
-    bottom: 168px;
+    bottom: 190px;
     gap: 8px;
   }
 
   .spin-controls button {
     width: 52px;
     height: 52px;
-    font-size: 24px;
+  }
+
+  .spin-controls .icon {
+    width: 24px;
+    height: 24px;
   }
 }

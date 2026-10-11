@@ -1,13 +1,10 @@
 import { renderControlGroups } from './controlsData';
 import { loadFlag, saveFlag } from './storage';
 
-/** Below this width the panel starts collapsed (it would crowd the board). */
-const WIDE_SCREEN = 1000;
-
 /**
  * Compact "Controls" window floating on the right edge, listing every
  * control. It overlays the scene (the board stays centered) and collapses
- * to a small tab; the choice is remembered.
+ * to a small tab, where it starts; the choice is remembered.
  */
 export class ControlsPanel {
   readonly el: HTMLElement;
@@ -15,7 +12,7 @@ export class ControlsPanel {
   private open: boolean;
 
   constructor() {
-    this.open = loadFlag('controlsPanel', window.innerWidth >= WIDE_SCREEN);
+    this.open = loadFlag('controlsPanel', false);
 
     this.el = document.createElement('aside');
     this.el.className = 'controls-panel';

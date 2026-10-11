@@ -1,3 +1,4 @@
+import type { IconName } from './icons';
 import { hintedButton } from './keyHint';
 
 export interface ViewControlActions {
@@ -16,15 +17,21 @@ export class ViewControls {
   constructor(actions: ViewControlActions) {
     this.el = document.createElement('div');
     this.el.className = 'spin-controls';
-    const add = (label: string, title: string, key: string, action: () => void) => {
-      const { wrap, button } = hintedButton({ label, title, key, action });
+    const add = (
+      name: IconName,
+      title: string,
+      caption: string,
+      key: string,
+      action: () => void,
+    ) => {
+      const { wrap, button } = hintedButton({ icon: name, title, caption, key, action });
       this.el.appendChild(wrap);
       return button;
     };
-    add('↺', 'Turn board left', 'Q', actions.turnLeft);
-    add('↻', 'Turn board right', 'E', actions.turnRight);
-    this.top = add('⊡', "Bird's-eye view", 'Space', actions.toggleTopView);
-    this.xray = add('◍', 'Show hidden gaps', 'X', actions.toggleXray);
+    add('turnLeft', 'Turn board left', 'Left', 'Q', actions.turnLeft);
+    add('turnRight', 'Turn board right', 'Right', 'E', actions.turnRight);
+    this.top = add('topView', "Bird's-eye view", 'Top', 'Space', actions.toggleTopView);
+    this.xray = add('gaps', 'Show hidden gaps', 'Gaps', 'X', actions.toggleXray);
     for (const b of [this.top, this.xray]) b.setAttribute('aria-pressed', 'false');
     document.body.appendChild(this.el);
   }

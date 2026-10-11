@@ -268,10 +268,19 @@ hud.setBest(best);
 /** Fit the camera into the space between the score readout and the piece controls / tray. */
 function layout(): void {
   const { clientWidth: w, clientHeight: h } = container!;
-  const top = hud.scoreEl.getBoundingClientRect().bottom;
+  // The board's far corner is narrow, so it may tuck under the bottom of the big score.
+  const scoreBox = hud.scoreEl.getBoundingClientRect();
+  const top = scoreBox.bottom - scoreBox.height * 0.3;
   // The controls bar only takes bottom space when laid out as a row (phones).
   const row = getComputedStyle(pieceControls.el).flexDirection === 'row';
-  const bottom = h - (row ? pieceControls.el : tray.el).getBoundingClientRect().top;
+  // On phones the view buttons float above that row, so the board must clear them too.
+  const bottomEdge = row
+    ? Math.min(
+        pieceControls.el.getBoundingClientRect().top,
+        viewControls.el.getBoundingClientRect().top,
+      )
+    : tray.el.getBoundingClientRect().top;
+  const bottom = h - bottomEdge;
   rig.layout(w, h, top, bottom);
 }
 window.addEventListener('resize', layout);

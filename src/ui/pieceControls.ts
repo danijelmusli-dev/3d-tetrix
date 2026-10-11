@@ -1,4 +1,5 @@
 import type { RotationKind } from '../input/placementMath';
+import type { IconName } from './icons';
 import { hintedButton } from './keyHint';
 
 export interface PieceControlActions {
@@ -22,22 +23,26 @@ export class PieceControls {
   constructor(actions: PieceControlActions) {
     this.el = document.createElement('div');
     this.el.className = 'piece-controls';
-    const add = (label: string, title: string, key: string, action: () => void) => {
-      const { wrap, button } = hintedButton({ label, title, key, action });
+    const add = (content: IconName | 'Slide', title: string, key: string, action: () => void) => {
+      const { wrap, button } = hintedButton(
+        content === 'Slide'
+          ? { label: content, title, key, action }
+          : { icon: content, title, key, action },
+      );
       this.el.appendChild(wrap);
       return { wrap, button };
     };
-    add('⟳', 'Spin piece', 'R', () => actions.rotate('spin'));
-    add('⤵', 'Tip piece', 'F', () => actions.rotate('tip'));
-    add('↷', 'Roll piece', 'T', () => actions.rotate('roll'));
+    add('spin', 'Spin piece', 'R', () => actions.rotate('spin'));
+    add('tip', 'Tip piece', 'F', () => actions.rotate('tip'));
+    add('roll', 'Roll piece', 'T', () => actions.rotate('roll'));
     this.slide = add('Slide', 'Slide into gaps', 'Shift', () => actions.toggleFree()).button;
     this.slide.classList.add('slide');
     this.slide.setAttribute('aria-pressed', 'false');
     this.freeOnly.push(
-      add('▲', 'Raise piece', 'W', () => actions.raise(1)).wrap,
-      add('▼', 'Lower piece', 'S', () => actions.raise(-1)).wrap,
+      add('raise', 'Raise piece', 'W', () => actions.raise(1)).wrap,
+      add('lower', 'Lower piece', 'S', () => actions.raise(-1)).wrap,
     );
-    add('✕', 'Put piece back', 'Esc', () => actions.cancel());
+    add('close', 'Put piece back', 'Esc', () => actions.cancel());
     document.body.appendChild(this.el);
     this.update(false, false);
   }

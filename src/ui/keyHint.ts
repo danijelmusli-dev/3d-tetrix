@@ -1,5 +1,11 @@
+import { icon, type IconName } from './icons';
+
 export interface HintedButtonSpec {
-  label: string;
+  /** Text shown in the button (when there is no icon). */
+  label?: string;
+  icon?: IconName;
+  /** Small visible caption under the button. */
+  caption?: string;
   title: string;
   /** Keyboard shortcut shown beside (not inside) the button; hidden on touch screens. */
   key: string;
@@ -15,7 +21,8 @@ export function hintedButton(spec: HintedButtonSpec): {
   wrap.className = 'ctl';
   const button = document.createElement('button');
   button.type = 'button';
-  button.textContent = spec.label;
+  if (spec.icon) button.appendChild(icon(spec.icon));
+  else button.textContent = spec.label ?? '';
   button.title = `${spec.title} (${spec.key})`;
   button.setAttribute('aria-label', spec.title);
   button.setAttribute('aria-keyshortcuts', spec.key);
@@ -27,5 +34,11 @@ export function hintedButton(spec: HintedButtonSpec): {
   hint.textContent = spec.key;
   hint.setAttribute('aria-hidden', 'true');
   wrap.append(button, hint);
+  if (spec.caption) {
+    const caption = document.createElement('span');
+    caption.className = 'ctl-caption';
+    caption.textContent = spec.caption;
+    wrap.appendChild(caption);
+  }
   return { wrap, button };
 }
