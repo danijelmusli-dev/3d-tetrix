@@ -804,6 +804,100 @@ select:focus-visible {
   font-size: 11px;
 }
 
+/* ---------- Window open / close ---------- */
+
+/* Every window is toggled with [hidden]. Transitioning `display` (discrete) keeps the
+   window rendered while it fades out, and @starting-style gives it a start frame to
+   animate in from. Browsers without support just switch instantly. */
+.help-panel,
+.board-panel,
+.skin-panel,
+.controls-panel,
+.controls-tab,
+.game-over {
+  transition:
+    opacity 240ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 280ms cubic-bezier(0.22, 1, 0.36, 1),
+    display 280ms allow-discrete;
+}
+
+.help-panel,
+.board-panel {
+  transform-origin: top right;
+}
+
+.skin-panel {
+  transform-origin: top left;
+}
+
+.help-panel[hidden],
+.board-panel[hidden],
+.skin-panel[hidden] {
+  opacity: 0;
+  transform: translateY(-10px) scale(0.96);
+}
+
+.controls-panel[hidden] {
+  opacity: 0;
+  transform: translate(28px, -50%);
+}
+
+.controls-tab[hidden] {
+  opacity: 0;
+  transform: translate(-12px, -50%) rotate(180deg);
+}
+
+.game-over[hidden] {
+  opacity: 0;
+}
+
+.game-over-card {
+  transition: transform 360ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.game-over[hidden] .game-over-card {
+  transform: translateY(14px) scale(0.94);
+}
+
+@starting-style {
+  .help-panel,
+  .board-panel,
+  .skin-panel {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.96);
+  }
+
+  .controls-panel {
+    opacity: 0;
+    transform: translate(28px, -50%);
+  }
+
+  .controls-tab {
+    opacity: 0;
+    transform: translate(-12px, -50%) rotate(180deg);
+  }
+
+  .game-over {
+    opacity: 0;
+  }
+
+  .game-over-card {
+    transform: translateY(14px) scale(0.94);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .help-panel,
+  .board-panel,
+  .skin-panel,
+  .controls-panel,
+  .controls-tab,
+  .game-over,
+  .game-over-card {
+    transition: none;
+  }
+}
+
 /* ---------- Phones ---------- */
 
 @media (max-width: 600px) {
