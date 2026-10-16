@@ -75,7 +75,7 @@ export class Game {
     if (z === null) return null;
 
     const pieceId = this.tray.take(slot);
-    const trayRefilled = this.tray.refillIfEmpty();
+    const trayRefilled = this.tray.refillIfEmpty(this.score);
     return this.commit(pieceId, orientation, x, y, z, trayRefilled);
   }
 
@@ -96,7 +96,7 @@ export class Game {
     if (!reachable) return null;
     const rest = fallZ(this.grid, o.cells, x, y, z)!;
     this.tray.take(slot);
-    const trayRefilled = this.tray.refillIfEmpty();
+    const trayRefilled = this.tray.refillIfEmpty(this.score);
     return this.commit(id, orientation, x, y, rest, trayRefilled);
   }
 

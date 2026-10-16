@@ -43,6 +43,8 @@ export interface PieceDef {
   cells: readonly Vec3[];
   /** Relative chance of being dealt. Small pieces are rarer so they stay a treat. */
   weight: number;
+  /** Score at which this brick starts being dealt; 0 = from the first hand. */
+  unlockScore: number;
 }
 
 const WEIGHTS: Partial<Record<PieceId, number>> = {
@@ -209,7 +211,34 @@ const SHAPES: Record<PieceId, Vec3[]> = {
   ]),
 };
 
+/**
+ * The classic tetrominoes, domino, single cube and bar of 3 are dealt from the start;
+ * the odd shapes arrive as the score climbs, the biggest last.
+ */
+const UNLOCK_SCORES: Partial<Record<PieceId, number>> = {
+  B: 250,
+  A: 300,
+  P: 500,
+  U: 500,
+  V: 800,
+  G: 800,
+  N: 1000,
+  R: 1000,
+  F: 1300,
+  W: 1600,
+  Y: 1600,
+  H: 2000,
+  Q: 2500,
+  C: 3000,
+};
+
 export const PIECES = {} as Record<PieceId, PieceDef>;
 PIECE_IDS.forEach((id, i) => {
-  PIECES[id] = { id, colorId: i + 1, cells: SHAPES[id], weight: WEIGHTS[id] ?? 1 };
+  PIECES[id] = {
+    id,
+    colorId: i + 1,
+    cells: SHAPES[id],
+    weight: WEIGHTS[id] ?? 1,
+    unlockScore: UNLOCK_SCORES[id] ?? 0,
+  };
 });

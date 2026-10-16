@@ -17,12 +17,33 @@ describe('Tray', () => {
       tray.take(0);
       tray.take(1);
       tray.take(2);
-      tray.refillIfEmpty();
+      tray.refillIfEmpty(Infinity);
       for (const id of tray.pieces) counts.set(id!, (counts.get(id!) ?? 0) + 1);
     }
     for (const id of PIECE_IDS) expect(counts.get(id)).toBeGreaterThan(0);
     expect(counts.get('M')!).toBeLessThan(counts.get('D')!);
     expect(counts.get('D')!).toBeLessThan(counts.get('T')!);
+  });
+
+  it('deals only the simple bricks until the score unlocks the odd ones', () => {
+    const START = ['I', 'O', 'T', 'S', 'Z', 'J', 'L', 'D', 'M', 'E'];
+    const seen = (score: number) => {
+      const tray = new Tray(createRng(5));
+      const ids = new Set<string>();
+      for (let i = 0; i < 2000; i++) {
+        tray.take(0);
+        tray.take(1);
+        tray.take(2);
+        tray.refillIfEmpty(score);
+        for (const id of tray.pieces) ids.add(id!);
+      }
+      return ids;
+    };
+    expect([...seen(0)].sort()).toEqual([...START].sort());
+    expect(seen(200).has('B')).toBe(false);
+    expect(seen(300).has('B')).toBe(true);
+    expect(seen(300).has('C')).toBe(false);
+    expect(seen(5000).has('C')).toBe(true);
   });
 
   it('is deterministic for a seed', () => {

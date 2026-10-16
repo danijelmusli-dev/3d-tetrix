@@ -28,6 +28,13 @@ describe('pieces', () => {
     }
   });
 
+  it('the start set is the classics plus domino, single cube and bar', () => {
+    const start = PIECE_IDS.filter((id) => PIECES[id].unlockScore === 0);
+    expect([...start].sort()).toEqual(['D', 'E', 'I', 'J', 'L', 'M', 'O', 'S', 'T', 'Z']);
+    // The biggest brick comes last.
+    expect(PIECES.C.unlockScore).toBe(Math.max(...PIECE_IDS.map((id) => PIECES[id].unlockScore)));
+  });
+
   it('the big block is a solid 2x3x2 cuboid and the slab is 2x3 flat', () => {
     expect(getOrientations('C')[0]!.extent).toEqual([3, 2, 2]);
     expect(getOrientations('R')[0]!.extent).toEqual([3, 2, 1]);
