@@ -7,20 +7,24 @@ import {
   rotateOrientation,
 } from '../../src/core/orientations';
 
+/** Bricks whose base shape stands more than one layer high. */
+const TALL = ['B', 'C', 'F', 'H', 'W', 'Y'];
+
 describe('pieces', () => {
   it('defines every brick with a unique color and the expected cell count', () => {
-    expect(PIECE_IDS).toHaveLength(16);
+    expect(PIECE_IDS).toHaveLength(24);
     const colors = new Set(PIECE_IDS.map((id) => PIECES[id].colorId));
-    expect(colors.size).toBe(16);
+    expect(colors.size).toBe(24);
     const sizes = Object.fromEntries(PIECE_IDS.map((id) => [id, PIECES[id].cells.length]));
     expect(sizes).toEqual({
       ...{ I: 4, O: 4, T: 4, S: 4, Z: 4, J: 4, L: 4, D: 2, M: 1, B: 8 },
       ...{ E: 3, U: 5, G: 5, N: 5, R: 6, C: 12 },
+      ...{ A: 3, P: 5, F: 6, H: 6, W: 4, Y: 4, Q: 8, V: 5 },
     });
-    // Every base shape rests on the floor; all but the two tall blocks lie flat.
+    // Every base shape rests on the floor; the flat ones sit on one layer.
     for (const id of PIECE_IDS) {
       expect(Math.min(...PIECES[id].cells.map(([, , z]) => z))).toBe(0);
-      if (id !== 'B' && id !== 'C') expect(PIECES[id].cells.every(([, , z]) => z === 0)).toBe(true);
+      if (!TALL.includes(id)) expect(PIECES[id].cells.every(([, , z]) => z === 0)).toBe(true);
     }
   });
 
@@ -60,6 +64,7 @@ describe('getOrientations', () => {
   const expected = {
     ...{ I: 3, O: 3, T: 12, S: 12, Z: 12, J: 24, L: 24, D: 3, M: 1, B: 1 },
     ...{ E: 3, U: 12, G: 24, N: 12, R: 6, C: 3 },
+    ...{ A: 12, P: 3, F: 12, H: 6, W: 12, Y: 8, Q: 3, V: 12 },
   } as const;
 
   for (const id of PIECE_IDS) {

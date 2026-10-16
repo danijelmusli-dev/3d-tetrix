@@ -3,7 +3,9 @@ import type { Vec3 } from './grid';
 /**
  * 7 tetrominoes, plus D (domino, 2 cubes), M (mono, 1 cube) and B (2x2x2 box, 8 cubes), and the
  * bigger bricks: E (flat bar of 3), U (cup, 5), G (long L, 5), N (long zigzag, 5),
- * R (flat 2x3 slab, 6) and C (2x3x2 block, 12).
+ * R (flat 2x3 slab, 6) and C (2x3x2 block, 12), then A (corner, 3), P (plus, 5),
+ * F (staircase, 6), H (upright 2x1x3 tower, 6), W (screw, 4), Y (tripod, 4),
+ * Q (3x3 ring, 8) and V (long T, 5).
  */
 export const PIECE_IDS = [
   'I',
@@ -22,6 +24,14 @@ export const PIECE_IDS = [
   'N',
   'R',
   'C',
+  'A',
+  'P',
+  'F',
+  'H',
+  'W',
+  'Y',
+  'Q',
+  'V',
 ] as const;
 export type PieceId = (typeof PIECE_IDS)[number];
 
@@ -45,6 +55,14 @@ const WEIGHTS: Partial<Record<PieceId, number>> = {
   N: 0.6,
   R: 0.5,
   C: 0.25,
+  A: 0.8,
+  P: 0.6,
+  F: 0.5,
+  H: 0.5,
+  W: 0.7,
+  Y: 0.7,
+  Q: 0.3,
+  V: 0.6,
 };
 
 const flat = (points: [number, number][]): Vec3[] => points.map(([x, y]) => [x, y, 0]);
@@ -137,6 +155,58 @@ const SHAPES: Record<PieceId, Vec3[]> = {
   ]),
   R: flat([0, 1].flatMap((y) => [0, 1, 2].map((x): [number, number] => [x, y]))),
   C: [0, 1].flatMap((z) => [0, 1].flatMap((y) => [0, 1, 2].map((x): Vec3 => [x, y, z]))),
+  A: flat([
+    [0, 0],
+    [1, 0],
+    [0, 1],
+  ]),
+  P: flat([
+    [1, 0],
+    [0, 1],
+    [1, 1],
+    [2, 1],
+    [1, 2],
+  ]),
+  // Steps of height 3, 2 and 1.
+  F: [
+    [0, 0, 0],
+    [0, 0, 1],
+    [0, 0, 2],
+    [1, 0, 0],
+    [1, 0, 1],
+    [2, 0, 0],
+  ],
+  // Thin pillar standing 3 high.
+  H: [0, 1, 2].flatMap((z): Vec3[] => [
+    [0, 0, z],
+    [1, 0, z],
+  ]),
+  // Twisted: one step along each axis in turn (not flat, not mirror-symmetric).
+  W: [
+    [0, 0, 0],
+    [1, 0, 0],
+    [1, 1, 0],
+    [1, 1, 1],
+  ],
+  // Corner cube with a leg along each axis.
+  Y: [
+    [0, 0, 0],
+    [1, 0, 0],
+    [0, 1, 0],
+    [0, 0, 1],
+  ],
+  Q: flat(
+    [0, 1, 2]
+      .flatMap((y) => [0, 1, 2].map((x): [number, number] => [x, y]))
+      .filter(([x, y]) => x !== 1 || y !== 1),
+  ),
+  V: flat([
+    [0, 0],
+    [1, 0],
+    [2, 0],
+    [1, 1],
+    [1, 2],
+  ]),
 };
 
 export const PIECES = {} as Record<PieceId, PieceDef>;

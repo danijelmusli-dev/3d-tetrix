@@ -24,6 +24,14 @@ export const PIECE_COLORS = [
   0x2fb590, // N (long zigzag) - jade
   0xc75a7a, // R (2x3 slab) - rose
   0x9a6a45, // C (2x3x2 block) - bronze
+  0xff8f6b, // A (corner) - coral
+  0x4fd0e0, // P (plus) - sky
+  0xc9d84a, // F (staircase) - chartreuse
+  0x6b7bd6, // H (tower) - periwinkle
+  0xe0489a, // W (screw) - magenta
+  0x3f9e5a, // Y (tripod) - forest
+  0xd8d0f0, // Q (ring) - lavender
+  0xb5502d, // V (long T) - rust
 ] as const;
 
 /** Block skins players can pick (see render/skins.ts), with their menu names. */
