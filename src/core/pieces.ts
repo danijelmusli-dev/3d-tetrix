@@ -1,7 +1,28 @@
 import type { Vec3 } from './grid';
 
-/** 7 tetrominoes, plus D (domino, 2 cubes), M (mono, 1 cube) and B (2x2x2 box, 8 cubes). */
-export const PIECE_IDS = ['I', 'O', 'T', 'S', 'Z', 'J', 'L', 'D', 'M', 'B'] as const;
+/**
+ * 7 tetrominoes, plus D (domino, 2 cubes), M (mono, 1 cube) and B (2x2x2 box, 8 cubes), and the
+ * bigger bricks: E (flat bar of 3), U (cup, 5), G (long L, 5), N (long zigzag, 5),
+ * R (flat 2x3 slab, 6) and C (2x3x2 block, 12).
+ */
+export const PIECE_IDS = [
+  'I',
+  'O',
+  'T',
+  'S',
+  'Z',
+  'J',
+  'L',
+  'D',
+  'M',
+  'B',
+  'E',
+  'U',
+  'G',
+  'N',
+  'R',
+  'C',
+] as const;
 export type PieceId = (typeof PIECE_IDS)[number];
 
 export interface PieceDef {
@@ -14,7 +35,17 @@ export interface PieceDef {
   weight: number;
 }
 
-const WEIGHTS: Partial<Record<PieceId, number>> = { D: 0.6, M: 0.4, B: 0.4 };
+const WEIGHTS: Partial<Record<PieceId, number>> = {
+  D: 0.6,
+  M: 0.4,
+  B: 0.4,
+  E: 0.8,
+  U: 0.6,
+  G: 0.6,
+  N: 0.6,
+  R: 0.5,
+  C: 0.25,
+};
 
 const flat = (points: [number, number][]): Vec3[] => points.map(([x, y]) => [x, y, 0]);
 
@@ -75,6 +106,37 @@ const SHAPES: Record<PieceId, Vec3[]> = {
       [1, 1],
     ].map(([x, y]): Vec3 => [x!, y!, z]),
   ),
+  E: flat([
+    [0, 0],
+    [1, 0],
+    [2, 0],
+  ]),
+  // Cup: three in a row with both ends raised.
+  U: flat([
+    [0, 0],
+    [2, 0],
+    [0, 1],
+    [1, 1],
+    [2, 1],
+  ]),
+  // L with the long arm doubled.
+  G: flat([
+    [0, 0],
+    [0, 1],
+    [0, 2],
+    [0, 3],
+    [1, 3],
+  ]),
+  // Long zigzag, like the letter S.
+  N: flat([
+    [0, 0],
+    [1, 0],
+    [1, 1],
+    [1, 2],
+    [2, 2],
+  ]),
+  R: flat([0, 1].flatMap((y) => [0, 1, 2].map((x): [number, number] => [x, y]))),
+  C: [0, 1].flatMap((z) => [0, 1].flatMap((y) => [0, 1, 2].map((x): Vec3 => [x, y, z]))),
 };
 
 export const PIECES = {} as Record<PieceId, PieceDef>;

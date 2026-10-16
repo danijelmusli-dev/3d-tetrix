@@ -18,6 +18,12 @@ export const PIECE_COLORS = [
   0xe56ba8, // D (domino) - pink
   0xe9e4d4, // M (single cube) - ivory
   0xb8e05a, // B (2x2x2 box) - lime
+  0x8fa3b8, // E (bar of 3) - steel
+  0x7a5be0, // U (cup) - indigo
+  0xf0c04a, // G (long L) - gold
+  0x2fb590, // N (long zigzag) - jade
+  0xc75a7a, // R (2x3 slab) - rose
+  0x9a6a45, // C (2x3x2 block) - bronze
 ] as const;
 
 /** Block skins players can pick (see render/skins.ts), with their menu names. */
